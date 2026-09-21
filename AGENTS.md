@@ -1,0 +1,2 @@
+- Commit subjects: capitalized imperative, no final period, target 50 characters, maximum 72, in English.
+- Separate any body with a blank line; wrap at 72 characters and explain the reason for the change.
