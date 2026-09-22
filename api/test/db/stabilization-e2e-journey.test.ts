@@ -377,6 +377,9 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
     expect(res.body.ok).toBe(true)
     const newBookingId = res.body.data.bookingId
     expect(newBookingId).not.toBe(booking2Id)
+    
+    // Update booking2Id to the new booking for subsequent tests
+    ; (global as any).booking2Id = newBookingId
 
     // Verify old booking is Cancelled, new booking is Upcoming
     const oldBookingCheck = await pool.query(
