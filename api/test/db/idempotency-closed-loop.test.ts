@@ -27,8 +27,14 @@ describe('Idempotency Closed Loop', () => {
     pool = new Pool({ connectionString: DATABASE_URL })
 
     // Setup test data
+    // First create app_user
+    await pool.query(
+      `INSERT INTO app_user (id) VALUES ('teacher-user-1')
+       ON CONFLICT (id) DO NOTHING`
+    )
+    
     const { rows: [teacher] } = await pool.query(
-      `INSERT INTO teacher_profile (user_id, display_name) VALUES ('teacher-user-1', 'Test Teacher')
+      `INSERT INTO teacher_profile (user_id, name) VALUES ('teacher-user-1', 'Test Teacher')
        RETURNING id`
     )
     teacherId = teacher.id
