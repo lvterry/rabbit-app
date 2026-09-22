@@ -195,6 +195,15 @@ enum AdjustmentType {
             return "上课记录有误，购买量正确"
         }
     }
+    
+    var transactionType: PackageTransactionType {
+        switch self {
+        case .purchaseAdjustment:
+            return .purchaseAdjustment
+        case .balanceAdjustment:
+            return .balanceAdjustment
+        }
+    }
 }
 
 // MARK: - View Model
@@ -211,9 +220,9 @@ class AdjustPackageViewModel {
     var error: APIError?
     var showError = false
     
-    private let packageRepo: PackageRepository
+    private let packageRepo: any PackageRepositoryProtocol
     
-    init(packageId: String, purchased: Int, remaining: Int, repo: PackageRepository) {
+    init(packageId: String, purchased: Int, remaining: Int, repo: any PackageRepositoryProtocol) {
         self.packageId = packageId
         self.currentPurchased = purchased
         self.currentRemaining = remaining
@@ -235,12 +244,23 @@ class AdjustPackageViewModel {
         isLoading = true
         defer { isLoading = false }
         
-        // TODO: Call API to adjust package
-        // This should map to PURCHASE_ADJUSTMENT or BALANCE_ADJUSTMENT transaction types
-        // as defined in mvp.md §12
-        
-        // Placeholder for now
-        await Task.sleep(1_000_000_000)
+        do {
+            // Call API with explicit type mapping per mvp.md §12
+            // 「购买量记错」→ PURCHASE_ADJUSTMENT: purchased & remaining change together
+            // 「消耗记错」→ BALANCE_ADJUSTMENT: only remaining changes
+            _ = try await packageRepo.adjustPackage(
+                packageId: packageId,
+                newValue: newValue,
+                type: type.transactionType,
+                note: note.isEmpty ? nil : note
+            )
+        } catch let err as RabbitAPIError {
+            error = err
+            showError = true
+        } catch {
+            self.error = .unknown(error)
+            showError = true
+        }
     }
 }
 

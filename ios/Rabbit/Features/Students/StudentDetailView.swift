@@ -8,6 +8,7 @@ struct StudentDetailView: View {
     @State private var showAddPackage = false
     @State private var showAddBooking = false
     @State private var showInvite = false
+    @State private var showAdjustPackage: Package?
     
     var body: some View {
         List {
@@ -153,7 +154,7 @@ struct StudentDetailView: View {
                                     PackageStatusBadge(status: package.status)
                                     
                                     Button {
-                                        // TODO: Show adjust package sheet
+                                        showAdjustPackage = package
                                     } label: {
                                         Text("调整")
                                             .font(.caption)
@@ -257,6 +258,16 @@ struct StudentDetailView: View {
             if let invite = viewModel.detail?.invite {
                 InviteSheetView(invite: invite)
             }
+        }
+        .sheet(item: $showAdjustPackage) { package in
+            AdjustPackageView(
+                viewModel: AdjustPackageViewModel(
+                    packageId: package.packageId,
+                    purchased: package.purchasedSessions,
+                    remaining: package.remainingSessions,
+                    repo: environment.packageRepository
+                )
+            )
         }
         .task {
             if viewModel.detail == nil {

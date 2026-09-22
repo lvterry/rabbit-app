@@ -11,6 +11,7 @@ public final class AppEnvironment {
     public let studentRepository: StudentRepository
     public let courseRepository: CourseRepository
     public let availabilityRepository: AvailabilityRepository
+    public let packageRepository: PackageRepository
     
     public init() {
         // Read configuration from environment or use defaults
@@ -24,5 +25,6 @@ public final class AppEnvironment {
         self.studentRepository = StudentRepository(client: apiClient)
         self.courseRepository = CourseRepository(client: apiClient)
         self.availabilityRepository = AvailabilityRepository(client: apiClient)
+        self.packageRepository = PackageRepository(client: apiClient)
     }
 }

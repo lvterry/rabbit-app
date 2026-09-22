@@ -97,46 +97,70 @@ struct StudentListRow: View {
     let student: StudentSummary
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(student.name)
-                    .font(.headline)
-                
-                if !student.bound {
-                    Image(systemName: "link.badge.plus")
-                        .foregroundStyle(.orange)
-                        .font(.caption)
-                }
-                
-                Spacer()
-                
-                if student.remainingTotal > 0 {
-                    Text("剩余 \(student.remainingTotal) 节")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            
-            if !student.courseSummaries.isEmpty {
-                HStack(spacing: 8) {
-                    ForEach(student.courseSummaries, id: \.courseId) { course in
-                        Text(course.courseName)
+        HStack(alignment: .top, spacing: Spacing.md) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                HStack(spacing: Spacing.sm) {
+                    Text(student.name)
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.inkPrimary)
+                    
+                    if !student.bound {
+                        Text("未绑定")
                             .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(4)
+                            .fontWeight(.medium)
+                            .foregroundColor(.accentBlush)
+                            .padding(.horizontal, Spacing.sm)
+                            .padding(.vertical, 2)
+                            .background(Color.accentBlushSoft)
+                            .cornerRadius(CornerRadius.sm)
+                    }
+                }
+                
+                if !student.courseSummaries.isEmpty {
+                    HStack(spacing: Spacing.xs) {
+                        ForEach(student.courseSummaries, id: \.courseId) { course in
+                            Text(course.courseName)
+                                .font(.caption)
+                                .foregroundColor(.inkSecondary)
+                                .padding(.horizontal, Spacing.sm)
+                                .padding(.vertical, 2)
+                                .background(Color.bgGrouped)
+                                .cornerRadius(CornerRadius.sm)
+                        }
+                    }
+                }
+                
+                if let nextBooking = student.nextBooking {
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
+                            .font(.caption2)
+                            .foregroundColor(.brandGreen)
+                        
+                        Text("下节课: \(nextBooking.dateLabel) \(nextBooking.timeRange)")
+                            .font(.caption)
+                            .foregroundColor(.brandGreen)
                     }
                 }
             }
             
-            if let nextBooking = student.nextBooking {
-                Text("下节课: \(nextBooking.dateLabel) \(nextBooking.timeRange)")
-                    .font(.caption)
-                    .foregroundStyle(.blue)
+            Spacer()
+            
+            if student.remainingTotal > 0 {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(student.remainingTotal)")
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .monospacedDigit()
+                        .foregroundColor(.brandGreen)
+                    
+                    Text("节")
+                        .font(.caption)
+                        .foregroundColor(.inkSecondary)
+                }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, Spacing.xs)
     }
 }
 
@@ -147,14 +171,16 @@ struct StatItem: View {
     let value: String
     
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: Spacing.xs) {
             Text(value)
                 .font(.title2)
                 .fontWeight(.bold)
+                .monospacedDigit()
+                .foregroundColor(.inkPrimary)
             
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.inkSecondary)
         }
         .frame(maxWidth: .infinity)
     }
