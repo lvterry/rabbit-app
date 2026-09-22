@@ -104,7 +104,8 @@ async function apiRequest<T>(
   method: string,
   path: string,
   body?: unknown,
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  isRetry = false
 ): Promise<APIResponse<T>> {
   if (USE_FIXTURES) {
     if (method === 'GET') {
@@ -240,6 +241,19 @@ async function apiRequest<T>(
     })
 
     const data = await response.json()
+    
+    if (!isRetry && response.status === 401 && path !== '/v1/auth/refresh') {
+      const refreshResponse = await refreshToken()
+      
+      if (refreshResponse.ok) {
+        setAccessToken(refreshResponse.data.accessToken)
+        return apiRequest<T>(method, path, body, idempotencyKey, true)
+      } else {
+        setAccessToken(null)
+        return data as APIResponse<T>
+      }
+    }
+    
     return data as APIResponse<T>
   } catch (error) {
     return {
