@@ -508,10 +508,13 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
   it('8. Teacher completes booking 2 again (two lesson_session rows: Voided + Active)', async () => {
     const booking2Id = (global as any).booking2Id
 
+    // Generate idempotency key for step 8 & 9 (will be reused in step 9)
+    completeIdempotencyKey = randomUUID()
+
     const res = await request
       .post(`/v1/bookings/${booking2Id}/completion`)
       .set('Authorization', `Bearer ${teacherAccessToken}`)
-      .set('Idempotency-Key', 'e2e-complete-2')
+      .set('Idempotency-Key', completeIdempotencyKey)
       .send({})
       .expect(200)
 
@@ -556,7 +559,7 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
     const res = await request
       .post(`/v1/bookings/${booking2Id}/completion`)
       .set('Authorization', `Bearer ${teacherAccessToken}`)
-      .set('Idempotency-Key', 'e2e-complete-2') // Same key as step 8
+      .set('Idempotency-Key', completeIdempotencyKey) // Same key as step 8
       .send({})
       .expect(200)
 
