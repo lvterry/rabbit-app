@@ -146,10 +146,11 @@
 				en,
 				Base,
 			);
-			mainGroup = D0000017;
-			packageReferences = (
-			);
-			productRefGroup = D000001A /* Products */;
+		mainGroup = D0000017;
+		packageReferences = (
+			D0000027 /* XCLocalSwiftPackageReference "RabbitKit" */,
+		);
+		productRefGroup = D000001A /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -390,9 +391,17 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		D0000027 /* XCLocalSwiftPackageReference "RabbitKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/RabbitKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		D0000014 /* RabbitKit */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = D0000027 /* XCLocalSwiftPackageReference "RabbitKit" */;
 			productName = RabbitKit;
 		};
 /* End XCSwiftPackageProductDependency section */
