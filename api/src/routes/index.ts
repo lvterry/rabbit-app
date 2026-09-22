@@ -25,6 +25,8 @@ import { createAvailabilityRouter } from './availability'
 import { createPackageRouter } from './package'
 import { createDeviceRouter } from './device'
 
+import type { Pool } from 'pg'
+
 export interface RouteDependencies {
   teacherRepo: TeacherRepository
   courseRepo: CourseRepository
@@ -33,6 +35,7 @@ export interface RouteDependencies {
   packageRepo: PackageRepository
   bookingRepo: BookingRepository
   idempotencyRepo: IdempotencyRepository
+  pool: Pool
 }
 
 /**
@@ -51,7 +54,7 @@ export function createApiRouter(deps: RouteDependencies): Router {
   router.use('/courses', createCourseRouter(deps))
   router.use('/availability', createAvailabilityRouter(deps))
   router.use('/packages', createPackageRouter(deps))
-  router.use('/me/devices', createDeviceRouter())
+  router.use('/me/devices', createDeviceRouter(deps.pool))
 
   return router
 }

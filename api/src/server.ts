@@ -66,6 +66,7 @@ async function startServer() {
     packageRepo,
     bookingRepo,
     idempotencyRepo,
+    pool,
   })
   
   app.use('/v1', authMiddleware, apiRouter)
