@@ -37,3 +37,12 @@ coverage/
 tmp/
 temp/
 .cache/
+
+# iOS / Apple Platform Security (auth-model.md §1, data-model.md §2.2)
+*.p8
+*.p12
+*.mobileprovision
+AuthKey_*.p8
+DerivedData/
+xcuserdata/
+*.xcworkspace/

@@ -11,6 +11,7 @@ import type {
   StudentStatus,
   InviteView,
   InvitePreview,
+  Principal,
 } from '@rabbit/shared'
 
 export interface StudentRepository {
@@ -76,11 +77,14 @@ export interface StudentRepository {
 
   /**
    * Consume invite (bind student to session)
+   * Takes Principal to determine flow: User kind binds to that user account,
+   * otherwise issues Student session (auth-model.md §1, data-model.md §5.6.1).
    */
-  consumeInvite(token: string, userId?: string): Promise<{
+  consumeInvite(token: string, principal: Principal): Promise<{
     studentId: string
     teacherId: string
     alreadyBound: boolean
+    issueNewSession: boolean
   }>
 
   /**

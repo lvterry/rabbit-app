@@ -8,6 +8,7 @@ import type {
   TeacherDayView,
   CreateBookingRequest,
   RescheduleBookingRequest,
+  Principal,
 } from '@rabbit/shared'
 
 export interface BookingRepository {
@@ -52,62 +53,64 @@ export interface BookingRepository {
 
   /**
    * Create a new booking
-   * This is a complex transaction involving availability check, balance check, and conflict check
+   * Principal is used to determine source (SelfBooked vs TeacherCreated) and permissions.
+   * Do NOT pass actorUserId/actorStudentId separately - use Principal (auth-model.md §5.1).
    */
   create(
-    teacherId: string,
     data: CreateBookingRequest,
-    actorUserId?: string,
-    actorStudentId?: string,
-    idempotencyKey?: string
+    principal: Principal,
+    idempotencyKey: string
   ): Promise<BookingView>
 
   /**
    * Complete a booking (teacher confirms class happened)
+   * Principal must have teacher capability for this booking's teacher.
    */
   complete(
     bookingId: string,
-    actorUserId: string,
-    idempotencyKey?: string
+    principal: Principal,
+    idempotencyKey: string
   ): Promise<BookingView>
 
   /**
    * Mark booking as no-show and charge session
+   * Principal must have teacher capability for this booking's teacher.
    */
   markNoShow(
     bookingId: string,
-    actorUserId: string,
-    idempotencyKey?: string
+    principal: Principal,
+    idempotencyKey: string
   ): Promise<BookingView>
 
   /**
    * Undo completion (within undo window)
+   * Principal must have teacher capability for this booking's teacher.
    */
   undoCompletion(
     bookingId: string,
-    actorUserId: string,
-    idempotencyKey?: string
+    principal: Principal,
+    idempotencyKey: string
   ): Promise<BookingView>
 
   /**
    * Cancel a booking
+   * Principal determines cancelledBy (Teacher vs Student) and policy (auth-model.md §2.1).
    */
   cancel(
     bookingId: string,
-    actorUserId?: string,
-    actorStudentId?: string,
-    idempotencyKey?: string
+    principal: Principal,
+    idempotencyKey: string
   ): Promise<BookingView>
 
   /**
    * Reschedule a booking (cancel + create in single transaction)
+   * Principal determines whether this is free or late reschedule (auth-model.md §2.1).
    */
   reschedule(
     bookingId: string,
     data: RescheduleBookingRequest,
-    actorUserId?: string,
-    actorStudentId?: string,
-    idempotencyKey?: string
+    principal: Principal,
+    idempotencyKey: string
   ): Promise<BookingView>
 
   /**

@@ -1,55 +1,47 @@
 /**
  * Idempotency Repository Port
- * Handles idempotency record storage and checking
+ * Write A pattern: check for existing record, execute business logic,
+ * insert successful idempotency record in the SAME transaction.
  */
 
-export interface IdempotencyRecord {
-  userId: string | null
-  studentId: string | null
-  idempotencyKey: string
-  endpoint: string
+export interface IdempotencyHit {
   requestHash: string
-  state: 'Processing' | 'Succeeded' | 'Failed'
-  responseStatus: number | null
-  responseBody: string | null
-  createdAt: string
-  completedAt: string | null
+  responseStatus: number
+  responseBody: string
 }
 
 export interface IdempotencyRepository {
   /**
-   * Try to create an idempotency record (fails if key already exists for this principal)
+   * Check if an idempotency record exists for this principal + key.
+   * Returns the cached response if found (for replay), null otherwise.
+   * This is the fast path at the start of the transaction.
    */
-  tryCreate(
+  findExisting(
     userId: string | null,
     studentId: string | null,
-    idempotencyKey: string,
     endpoint: string,
-    requestHash: string
-  ): Promise<boolean>
-
-  /**
-   * Get existing idempotency record
-   */
-  get(
-    userId: string | null,
-    studentId: string | null,
     idempotencyKey: string
-  ): Promise<IdempotencyRecord | null>
+  ): Promise<IdempotencyHit | null>
 
   /**
-   * Update idempotency record with response
+   * Record a successful idempotent operation.
+   * Called at the END of the business transaction, before commit.
+   * Principal comes from ctx.principal (userId/studentId), not from request body.
    */
-  updateWithResponse(
+  recordSuccess(
     userId: string | null,
     studentId: string | null,
+    endpoint: string,
     idempotencyKey: string,
+    requestHash: string,
     responseStatus: number,
-    responseBody: string
+    responseBody: string,
+    ttlHours: number
   ): Promise<void>
 
   /**
-   * Clean up old idempotency records (older than TTL)
+   * Clean up old idempotency records (older than TTL).
+   * This is the only DELETE operation allowed on this table.
    */
   cleanup(olderThanHours: number): Promise<number>
 }

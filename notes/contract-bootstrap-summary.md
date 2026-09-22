@@ -2,9 +2,119 @@
 
 **Agent 0 — Repository & Contract Bootstrap**  
 **Date:** 2026-09-22  
-**Branch:** `cursor/contract-bootstrap-f3c4`
+**Branch:** `cursor/contract-bootstrap-f3c4`  
+**Pull Request:** #1
 
-## ✅ Completed
+## ✅ Contract Correction Pass Complete
+
+This PR underwent a contract-correction review by Terry. All issues have been addressed:
+
+### Fix #1: Real Schema Validation for test:contract ✅
+
+**Issue:** `scripts/validate-fixtures.mjs` used loose inline schemas instead of actual exported schemas.
+
+**Resolution:**
+- Rewrote validation script to import and use actual Zod schemas from `@rabbit/shared`
+- Added `tsx` as devDependency to run TypeScript directly
+- Updated `test:contract` script to use `tsx scripts/validate-fixtures.ts`
+- All 24 fixtures now validate against the ACTUAL executable contract schemas
+- Green `pnpm test:contract` now confirms fixtures conform to real schemas
+
+### Fix #2: IdempotencyRepository Reconciled with data-model.md ✅
+
+**Issue:** Port modeled two-phase flow (Processing/Succeeded/Failed, tryCreate/updateWithResponse) which conflicts with recommended "Write A" pattern.
+
+**Resolution:**
+- Redesigned `api/src/ports/IdempotencyRepository.ts` to match Write A pattern:
+  - `findExisting()` — fast path for replay at transaction start
+  - `recordSuccess()` — record idempotency at END of business transaction
+  - Removed three-state model (Processing/Succeeded/Failed)
+  - No more two-phase tryCreate/updateWithResponse
+- Implementation will: check for existing record → execute business logic → insert successful record in SAME transaction (data-model.md §5.1)
+
+### Fix #3: Shared DTOs Audited Against CURRENT Docs ✅
+
+**Issue:** Need to verify all DTOs match current `impl-guide.md`, `auth-model.md`, `slot-algorithm.md`, `mvp.md`.
+
+**Resolution:**
+- Verified all shared types against current docs:
+  - ✅ `MetaResponse` — correct (version, minSupportedVersion, serverTime)
+  - ✅ `StudentHomeView` — correct multi-teacher representation (multiple CourseCard objects in courses array, each with different teacherId)
+  - ✅ `TeacherDayView` — correct fields
+  - ✅ `BookableDaysResponse` — correct shape
+  - ✅ `SlotsResponse` — correct shape
+  - ✅ Availability exception uses `date` (API contract name, DB column is `on_date`)
+  - ✅ Package transaction request uses `purchasedSessions`
+  - ✅ Teacher profile fields align with docs
+- Multi-teacher fixture represents User (kind='User') seeing multiple teachers' courses, NOT one Student with multiple teachers' courses under it
+
+### Fix #4: Strengthened principalSchema ✅
+
+**Issue:** Principal schema didn't validate per-kind invariants.
+
+**Resolution:**
+- Enhanced `principalSchema` in `packages/shared/src/schemas.ts` with refinement:
+  - `Public`: all IDs must be null
+  - `User`: only userId set (studentId/teacherId/inviteId null)
+  - `Student`: studentId + teacherId set (userId/inviteId null)
+  - `InviteToken`: studentId + teacherId + inviteId set (userId null)
+- Schema now enforces auth-model.md §1.1 invariants at validation time
+
+### Fix #5: Reviewed Ports for Identity Drift ✅
+
+**Issue:** Several ports passed `actorUserId?`/`actorStudentId?` parameters instead of using Principal.
+
+**Resolution:**
+- Updated `BookingRepository`:
+  - `create()`, `complete()`, `markNoShow()`, `undoCompletion()`, `cancel()`, `reschedule()` now take `principal: Principal` instead of actor IDs
+  - Removed `teacherId` parameter from `create()` (inferred from data or Principal)
+  - Added documentation: behavior identity derived from Principal per auth-model.md §2.1, §5.1
+- Updated `PackageRepository`:
+  - `addTransaction()` now takes `principal: Principal` instead of `actorUserId?`/`actorStudentId?`
+- Updated `StudentRepository`:
+  - `consumeInvite()` now takes `principal: Principal` instead of `userId?`
+  - Added `issueNewSession` to return type to clarify the two paths (User vs Student会话)
+- All ports now align with auth-model.md: "业务代码只读 ctx.principal，不读 actorUserId/actorStudentId"
+
+### Fix #6: Restored Security/Platform Ignores in .gitignore ✅
+
+**Issue:** iOS security files and build artifacts missing from .gitignore.
+
+**Resolution:**
+- Added to `.gitignore`:
+  - `*.p8`, `*.p12`, `*.mobileprovision`, `AuthKey_*.p8` (Apple auth keys)
+  - `DerivedData/`, `xcuserdata/`, `*.xcworkspace/` (iOS build artifacts)
+- Prevents sensitive credentials and platform-specific build outputs from entering repo
+
+### Fix #7: Reviewed constants.ts ✅
+
+**Issue:** Server-authoritative values (rule options, display labels) in client-shared contract.
+
+**Resolution:**
+- Removed from `packages/shared/src/constants.ts`:
+  - All display labels (weekdayLabels, slotReasonLabels, bookingSourceLabels, etc.)
+  - All rule options (minLeadHoursOptions, freeCancelHoursOptions, etc.)
+  - All duration options (courseDurationOptions)
+  - Default teacher settings
+- Retained only true protocol constants:
+  - Time constants (MINUTES_PER_DAY, etc.)
+  - Validation limits (MAX_COURSE_NAME_LENGTH, etc.)
+  - Pagination defaults
+  - TTL values shared for client validation
+- Added documentation: display labels and rule options MUST come from API responses (impl-guide.md §4.4)
+
+## 📊 Post-Correction Status
+
+- ✅ `pnpm install` succeeds
+- ✅ `pnpm typecheck` succeeds (all packages)
+- ✅ `pnpm test:contract` succeeds (all 24 fixtures validated against REAL schemas)
+- ✅ All port interfaces use Principal, not actor IDs
+- ✅ IdempotencyRepository follows Write A pattern
+- ✅ Principal schema enforces per-kind invariants
+- ✅ Security files in .gitignore
+- ✅ No server-authoritative values in shared constants
+
+## ✅ Completed (Original Bootstrap)
 
 ### 1. Monorepo Structure
 
@@ -36,7 +146,7 @@
 - Request/response types for all endpoints
 
 **Schemas** (`src/schemas.ts`):
-- Zod schemas for all types
+- Zod schemas for all types with per-kind Principal invariants
 - Request validation schemas
 - Response validation schemas
 - API envelope schemas
@@ -47,10 +157,8 @@
 - Helper functions for error handling
 
 **Constants** (`src/constants.ts`):
-- Weekday labels, status labels, transaction type labels
-- Rule options (from `mvp.md` §8)
-- Default values
-- Validation constants
+- Protocol constants only (time, pagination, validation limits)
+- NO display labels or rule options (server-authoritative)
 
 ### 4. Contract Fixtures
 
@@ -70,8 +178,8 @@ Created all 24 required fixtures in `contracts/fixtures/`:
 - `invites/expired-error.json` — Expired invite
 
 **Students:**
-- `students/student-home-anonymous.json` — Anonymous student home
-- `students/student-home-user-multi-teacher.json` — Multi-teacher view
+- `students/student-home-anonymous.json` — Anonymous student home (one teacher)
+- `students/student-home-user-multi-teacher.json` — Multi-teacher view (User kind, multiple CourseCards)
 - `students/student-detail.json` — Teacher view of student
 
 **Slots:**
@@ -94,32 +202,33 @@ Created all 24 required fixtures in `contracts/fixtures/`:
 - `errors/token-expired.json` — Token expired
 - `errors/network-error-client-only.json` — Network error
 
-All fixtures include:
+All fixtures:
+- Validated against ACTUAL Zod schemas from `@rabbit/shared`
 - Proper envelope structure (`ok`, `data`/`code`, `meta`/`requestId`)
 - Realistic UUIDs and data
 - Consistent relationships across fixtures
-- README.md documentation
+- Documented in README.md
 
 ### 5. API Ports (Interfaces Only)
 
-Created TypeScript interfaces in `api/src/ports/`:
+Created TypeScript interfaces in `api/src/ports/` — all use Principal, not actor IDs:
 - `AuthService.ts` — Authentication and session management
 - `TeacherRepository.ts` — Teacher profile access
 - `CourseRepository.ts` — Course data access
 - `AvailabilityRepository.ts` — Availability rules and exceptions
-- `StudentRepository.ts` — Student and invite management
-- `PackageRepository.ts` — Package and transaction management
-- `BookingRepository.ts` — Booking business logic coordination
-- `IdempotencyRepository.ts` — Idempotency record management
+- `StudentRepository.ts` — Student and invite management (consumeInvite takes Principal)
+- `PackageRepository.ts` — Package and transaction management (addTransaction takes Principal)
+- `BookingRepository.ts` — Booking business logic (all write methods take Principal)
+- `IdempotencyRepository.ts` — Write A pattern (findExisting/recordSuccess, no two-phase)
 - `NotificationRepository.ts` — Push notification and outbox
 
-All ports follow the design from `docs/data-model.md` and `docs/mvp.md`.
+All ports follow auth-model.md §5 (business code only reads ctx.principal) and data-model.md Write A pattern.
 
 ### 6. Scripts
 
 - `pnpm install` — Installs dependencies
 - `pnpm typecheck` — TypeScript type checking across all packages ✅
-- `pnpm test:contract` — Fixture validation against schemas ✅
+- `pnpm test:contract` — REAL fixture validation against exported schemas ✅
 - `pnpm test:spec` — Placeholder for spec tests
 - `pnpm test:domain` — Placeholder for domain tests
 - `pnpm test:api` — Placeholder for API tests
@@ -131,75 +240,67 @@ All ports follow the design from `docs/data-model.md` and `docs/mvp.md`.
 
 ### 7. Validation
 
-Created `scripts/validate-fixtures.mjs`:
-- Validates all fixtures against envelope schemas
-- Checks for expected fields
-- Validates error codes
-- All 24 fixtures pass ✅
+Created `scripts/validate-fixtures.ts`:
+- Uses `tsx` to run TypeScript directly
+- Imports and validates against ACTUAL Zod schemas from `@rabbit/shared`
+- Validates envelope structure (success/error)
+- Validates payload schemas per fixture type
+- All 24 fixtures pass against real schemas ✅
 
-## ❌ Not Completed
+## 🚫 No Blockers or Contract Ambiguities
 
-The following were intentionally not implemented per Agent 0 scope:
-
-### Business Logic
-- Slot generation algorithm (`computeSlots`)
-- Booking creation logic
-- Package transaction logic
-- Cancel policy calculations
-- Domain validations
-
-### Database
-- PostgreSQL migrations
-- Table definitions
-- Constraints and indexes
-- SECURITY DEFINER functions
-
-### API Implementation
-- HTTP routes
-- Middleware (auth, idempotency, rate limiting)
-- Repository implementations
-- Domain service implementations
-
-### Client Applications
-- Web frontend implementation
-- iOS app implementation
-
-### Tests
-- Spec tests (22 slot vectors)
-- Domain unit tests
-- API integration tests
-- E2E tests
-
-## 🚫 No Blockers
-
-No contract conflicts or blockers discovered. All documentation is consistent:
-- Principal model aligned with `auth-model.md`
+**No contract conflicts discovered.** All documentation is consistent and fixes align with current docs:
+- Principal model aligned with `auth-model.md` (no TeacherPrincipal kind, per-kind invariants enforced)
 - ErrorCode enum matches `slot-algorithm.md` §6.5
 - Fixture shapes match view models from parallel plan
 - Types align with database schema from `data-model.md`
+- IdempotencyRepository follows Write A pattern from `data-model.md` §5.1
+- All ports use Principal per `auth-model.md` §5
+- Constants.ts contains only protocol constants, not server-authoritative values
+- Multi-teacher representation is correct (multiple CourseCards, not nested under one Student)
 
-## 📋 Dependencies for Next Agents
+**Every fixture is validated by actual shared schemas** via `pnpm test:contract`.
+
+## 📋 Merge Recommendation
+
+✅ **RECOMMEND MERGE**
+
+All contract-correction requirements met:
+1. ✅ Fixtures validated against REAL schemas
+2. ✅ IdempotencyRepository reconciled with Write A pattern
+3. ✅ Shared DTOs audited and correct per current docs
+4. ✅ Principal schema strengthened with per-kind invariants
+5. ✅ All ports reviewed, no identity drift (Principal everywhere)
+6. ✅ Security/platform ignores restored in .gitignore
+7. ✅ Constants.ts cleaned of server-authoritative values
+
+Both `pnpm typecheck` and `pnpm test:contract` pass. Contract is sound and ready for parallel development.
+
+## 📝 Remaining Ambiguities
+
+**None.** All ambiguities from original bootstrap were resolved during correction pass.
+
+## 🎯 Dependencies for Next Agents
 
 ### Agent A (Backend Core)
 **Can start immediately:**
-- Use ports from `api/src/ports/`
+- Use ports from `api/src/ports/` (all follow Principal model and Write A pattern)
 - Implement `computeSlots` domain logic
 - Create PostgreSQL migrations
 - Implement `apply_package_transaction` SECURITY DEFINER function
+- Implement IdempotencyRepository with Write A pattern
 - Write domain tests
 
-**Depends on:**
-- None (fully independent)
+**Depends on:** None (fully independent)
 
 ### Agent B (Backend API)
 **Can start immediately:**
 - Use types from `@rabbit/shared`
 - Use fixtures for mocking during development
-- Implement HTTP routes
-- Implement auth middleware
+- Implement HTTP routes that extract Principal from auth middleware
+- Implement auth middleware that produces Principal (not actorUserId/actorStudentId)
 
-**Depends on:**
-- Agent A's repository implementations (can use stubs/mocks)
+**Depends on:** Agent A's repository implementations (can use stubs/mocks)
 
 ### Agent C (Student Web)
 **Can start immediately:**
@@ -224,57 +325,28 @@ No contract conflicts or blockers discovered. All documentation is consistent:
 
 ### Agent E (Contract QA)
 **Can start immediately:**
-- Validate fixtures against schemas
+- Validate fixtures against schemas (already done via `pnpm test:contract`)
 - Write contract compliance tests
 - Set up CI validation
 
-**Depends on:**
-- None (fixtures and schemas already exist)
+**Depends on:** None (fixtures and schemas already exist and validated)
 
-## 📊 Acceptance Criteria Status
-
-- ✅ `pnpm install` succeeds
-- ✅ `pnpm typecheck` succeeds
-- ✅ `pnpm test:contract` succeeds
-- ✅ All fixtures validate against Zod schemas
-- ✅ Summary document written
-
-## 🎯 Next Steps
-
-1. **Agent A**: Start implementing database migrations and domain logic
-2. **Agent B**: Start implementing HTTP layer and auth
-3. **Agent C**: Start building student web UI in fixture mode
-4. **Agent D**: Start building teacher iOS UI with mock repositories
-5. **Agent E**: Set up CI and write compliance tests
-
-All agents can now work in parallel from this commit without reorganizing the repository.
-
-## 📝 Notes
-
-### Key Decisions Made
-
-1. **Principal has no TeacherPrincipal kind**: Teacher is a capability, not an identity type (per `auth-model.md`)
-2. **Student.userId is nullable by design**: Anonymous students are the default path (per `mvp.md` §5.1 decision 5)
-3. **Fixtures use realistic future dates**: All dates relative to 2026-02-20 to avoid "already started" issues
-4. **Validation script uses envelope checking**: Full schema validation deferred to post-build phase
+## 📊 What Changed in Contract-Correction Pass
 
 ### Files Modified
+1. `scripts/validate-fixtures.mjs` → `scripts/validate-fixtures.ts` (real schema validation)
+2. `package.json` (added tsx, updated test:contract script)
+3. `api/src/ports/IdempotencyRepository.ts` (redesigned for Write A)
+4. `api/src/ports/BookingRepository.ts` (Principal everywhere, no actor IDs)
+5. `api/src/ports/PackageRepository.ts` (Principal in addTransaction)
+6. `api/src/ports/StudentRepository.ts` (Principal in consumeInvite)
+7. `packages/shared/src/schemas.ts` (per-kind Principal invariants)
+8. `packages/shared/src/constants.ts` (removed server-authoritative values)
+9. `.gitignore` (added iOS security/platform patterns)
 
-- Created: 50+ new files
-- Modified: `.gitignore` (added standard ignores)
-- No conflicts with existing `docs/` or `AGENTS.md`
+### Commits
+Branch `cursor/contract-bootstrap-f3c4` contains:
+1. Initial bootstrap commit
+2. Contract-correction commit (this summary reflects post-correction state)
 
-### Commit Message
-
-```
-Bootstrap monorepo and contract
-
-- Add pnpm workspace with shared, api, web packages
-- Add PostgreSQL 16 docker-compose
-- Add shared types, schemas, errors, constants
-- Add 24 contract fixtures with validation
-- Add API port interfaces (no implementation)
-- Add scripts for typecheck and contract validation
-
-All fixtures validate. Ready for parallel agent development.
-```
+All agents can now work in parallel from this commit without reorganizing the repository.

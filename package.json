@@ -8,7 +8,7 @@
     "api:dev": "pnpm --filter api dev",
     "web:dev": "pnpm --filter web dev",
     "test": "pnpm run test:contract && pnpm run test:spec && pnpm run test:domain",
-    "test:contract": "pnpm --filter shared test && node scripts/validate-fixtures.mjs",
+    "test:contract": "pnpm --filter shared test && tsx scripts/validate-fixtures.ts",
     "test:spec": "echo 'Spec tests not yet implemented' && exit 0",
     "test:domain": "pnpm --filter api test:domain",
     "test:api": "pnpm --filter api test",
@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "zod": "^3.22.4"
   },

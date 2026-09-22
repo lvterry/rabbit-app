@@ -11,13 +11,39 @@ import { z } from 'zod'
 
 export const principalKindSchema = z.enum(['Public', 'InviteToken', 'Student', 'User'])
 
-export const principalSchema = z.object({
+// Principal with per-kind invariants (auth-model.md §1.1)
+const basePrincipalSchema = z.object({
   kind: principalKindSchema,
   userId: z.string().uuid().nullable(),
   studentId: z.string().uuid().nullable(),
   teacherId: z.string().uuid().nullable(),
   inviteId: z.string().uuid().nullable(),
 })
+
+export const principalSchema = basePrincipalSchema.refine(
+  (p) => {
+    if (p.kind === 'Public') {
+      // Public: all IDs must be null
+      return p.userId === null && p.studentId === null && p.teacherId === null && p.inviteId === null
+    }
+    if (p.kind === 'User') {
+      // User: only userId set (studentId/teacherId/inviteId null)
+      return p.userId !== null && p.studentId === null && p.teacherId === null && p.inviteId === null
+    }
+    if (p.kind === 'Student') {
+      // Student: studentId + teacherId set (userId/inviteId null)
+      return p.studentId !== null && p.teacherId !== null && p.userId === null && p.inviteId === null
+    }
+    if (p.kind === 'InviteToken') {
+      // InviteToken: studentId + teacherId + inviteId set (userId null)
+      return p.studentId !== null && p.teacherId !== null && p.inviteId !== null && p.userId === null
+    }
+    return false
+  },
+  {
+    message: 'Principal IDs must match the kind invariants',
+  }
+)
 
 // ============================================================================
 // Status Schemas

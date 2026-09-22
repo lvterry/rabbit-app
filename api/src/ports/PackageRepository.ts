@@ -9,6 +9,7 @@ import type {
   CreatePackageRequest,
   AddPackageTransactionRequest,
   BalanceView,
+  Principal,
 } from '@rabbit/shared'
 
 export interface PackageRepository {
@@ -38,12 +39,12 @@ export interface PackageRepository {
 
   /**
    * Add transaction to package (via SECURITY DEFINER function)
+   * Principal is used to record actor in package_transaction (auth-model.md §5.1).
    */
   addTransaction(
     packageId: string,
     data: AddPackageTransactionRequest,
-    actorUserId?: string,
-    actorStudentId?: string
+    principal: Principal
   ): Promise<PackageTransactionView>
 
   /**
