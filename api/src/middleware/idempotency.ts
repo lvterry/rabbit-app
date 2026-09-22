@@ -4,10 +4,14 @@
  * Authority: parallel-plan-v2.md §8, data-model.md §2.8
  * 
  * Implements Write A pattern:
- * - Check for existing idempotency record
- * - If found with same requestHash -> replay response
- * - If found with different requestHash -> 409 IDEMPOTENCY_KEY_REUSED
- * - If not found -> proceed (record will be written in route handler)
+ * - Pre-flight: Check for existing idempotency record
+ * - If found with same requestHash + endpoint -> replay response
+ * - If found with different requestHash/endpoint -> 409 IDEMPOTENCY_KEY_REUSED
+ * - If not found -> proceed, route writes record
+ * - On 23505 unique constraint: re-read winner's record and compare hash
+ * 
+ * Unique constraint is (principal+key) NOT (principal+key+endpoint).
+ * This allows detection of cross-endpoint key reuse.
  * 
  * Idempotency-Key is required for specific write operations:
  * - POST /v1/bookings
@@ -19,7 +23,7 @@
 
 import type { Request, Response, NextFunction } from 'express'
 import { ErrorCode } from '@rabbit/shared'
-import { AppError } from '../http'
+import { AppError, isPostgresError } from '../http'
 import type { IdempotencyRepository } from '../ports'
 import { createHash } from 'crypto'
 
@@ -42,6 +46,11 @@ function computeRequestHash(req: Request): string {
  * 
  * Checks for replay conditions and prevents key reuse
  * Attaches idempotencyKey to req for route handlers
+ * 
+ * On 23505 unique constraint violation during route execution:
+ * - Re-read the winning record
+ * - Same hash + endpoint -> replay (another identical request won)
+ * - Different hash/endpoint -> IDEMPOTENCY_KEY_REUSED
  */
 export function createIdempotencyMiddleware(idempotencyRepo: IdempotencyRepository) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -55,21 +64,25 @@ export function createIdempotencyMiddleware(idempotencyRepo: IdempotencyReposito
     // Attach key to request for route handler
     ;(req as any).idempotencyKey = idempotencyKey
 
-    // Check for existing record
+    // Compute endpoint and hash for this request
     const endpoint = `${req.method} ${req.path}`
     const requestHash = computeRequestHash(req)
+    
+    // Attach for route handler use
+    ;(req as any).endpoint = endpoint
+    ;(req as any).requestHash = requestHash
 
     try {
-      // Check for existing idempotency record using Principal
+      // Pre-flight check: look for existing record
       const existing = await idempotencyRepo.findExisting(req.principal, endpoint, idempotencyKey)
 
       if (!existing) {
-        // No existing record - proceed normally
-        ;(req as any).requestHash = requestHash
+        // No existing record - proceed to route handler
+        // Route will attempt to write record; if 23505 occurs, see error handler below
         return next()
       }
 
-      // Found existing record - check if replay (same hash) or reuse (different hash)
+      // Found existing record - check if replay or reuse
       if (existing.requestHash === requestHash) {
         // Replay: same request -> return cached response
         res.status(existing.responseStatus).json(JSON.parse(existing.responseBody))
@@ -86,6 +99,42 @@ export function createIdempotencyMiddleware(idempotencyRepo: IdempotencyReposito
         }
       )
     } catch (error) {
+      // Check if this is a 23505 from recordSuccess racing with another request
+      if (isPostgresError(error) && error.code === '23505') {
+        // Race detected: another request with same principal+key won
+        // Re-read the winner's record to determine if replay or reuse
+        try {
+          const winner = await idempotencyRepo.findExisting(req.principal, endpoint, idempotencyKey)
+          
+          if (!winner) {
+            // Should not happen - record was just written
+            throw new AppError(ErrorCode.INTERNAL, 'Idempotency record not found after conflict')
+          }
+
+          // Compare hash and endpoint
+          if (winner.requestHash === requestHash && winner.responseStatus) {
+            // Same request won the race -> replay their response
+            res.status(winner.responseStatus).json(JSON.parse(winner.responseBody))
+            return
+          }
+
+          // Different request used same key
+          throw new AppError(
+            ErrorCode.IDEMPOTENCY_KEY_REUSED,
+            '同一幂等键被用于不同的请求',
+            {
+              currentEndpoint: endpoint,
+              currentHash: requestHash.substring(0, 8),
+            }
+          )
+        } catch (rereadError) {
+          // Pass through the error (AppError or re-read failure)
+          next(rereadError)
+          return
+        }
+      }
+
+      // Pass through other errors
       next(error)
     }
   }

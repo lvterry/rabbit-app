@@ -51,7 +51,12 @@ export function createApiRouter(deps: RouteDependencies): Router {
   router.use('/auth', createAuthRouter(deps))
   
   // Session metadata routes - at root level (NOT under /auth)
-  router.use('/', createSessionRouter(deps))
+  router.use('/', createSessionRouter({
+    teacherRepo: deps.teacherRepo,
+    studentRepo: deps.studentRepo,
+    bookingRepo: deps.bookingRepo,
+    packageRepo: deps.packageRepo,
+  }))
   
   // Business routes - mounted to match §12 exact paths
   router.use('/invites', createInviteRouter(deps))
