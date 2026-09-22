@@ -18,6 +18,7 @@ const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://rabbit:dev@localh
 
 describe('Idempotency Closed Loop', () => {
   let pool: Pool
+  let userId: string
   let teacherId: string
   let studentId: string
   let courseId: string
@@ -27,15 +28,16 @@ describe('Idempotency Closed Loop', () => {
     pool = new Pool({ connectionString: DATABASE_URL })
 
     // Setup test data
-    // First create app_user
-    await pool.query(
-      `INSERT INTO app_user (id) VALUES ('teacher-user-1')
-       ON CONFLICT (id) DO NOTHING`
+    // First create app_user with UUID
+    const { rows: [user] } = await pool.query(
+      `INSERT INTO app_user DEFAULT VALUES RETURNING id`
     )
+    userId = user.id
     
     const { rows: [teacher] } = await pool.query(
-      `INSERT INTO teacher_profile (user_id, name) VALUES ('teacher-user-1', 'Test Teacher')
-       RETURNING id`
+      `INSERT INTO teacher_profile (user_id, name) VALUES ($1, 'Test Teacher')
+       RETURNING id`,
+      [userId]
     )
     teacherId = teacher.id
 
@@ -70,7 +72,7 @@ describe('Idempotency Closed Loop', () => {
   beforeEach(async () => {
     // Clean up bookings and idempotency records before each test
     await pool.query(`DELETE FROM booking WHERE student_id = $1`, [studentId])
-    await pool.query(`DELETE FROM idempotency_record WHERE user_id = 'teacher-user-1' OR student_id = $1`, [studentId])
+    await pool.query(`DELETE FROM idempotency_record WHERE user_id = $1 OR student_id = $2`, [userId, studentId])
   })
 
   it('should write middleware endpoint and requestHash to database', async () => {
@@ -117,7 +119,7 @@ describe('Idempotency Closed Loop', () => {
           request_hash, response_status, response_body, state
         ) VALUES ($1, $2, $3, $4, $5, 201, $6, 'Succeeded')`,
         [
-          'teacher-user-1',
+          userId,
           null,
           idempotencyKey,
           endpoint,
@@ -133,7 +135,7 @@ describe('Idempotency Closed Loop', () => {
         `SELECT endpoint, request_hash, response_status, response_body
          FROM idempotency_record
          WHERE user_id = $1 AND idempotency_key = $2`,
-        ['teacher-user-1', idempotencyKey]
+        [userId, idempotencyKey]
       )
 
       expect(found).toBeDefined()
@@ -170,7 +172,7 @@ describe('Idempotency Closed Loop', () => {
           request_hash, response_status, response_body, state
         ) VALUES ($1, $2, $3, $4, $5, 200, $6, 'Succeeded')`,
         [
-          'teacher-user-1',
+          userId,
           null,
           idempotencyKey,
           endpoint,
@@ -184,7 +186,7 @@ describe('Idempotency Closed Loop', () => {
         `SELECT request_hash, response_status, response_body
          FROM idempotency_record
          WHERE user_id = $1 AND idempotency_key = $2`,
-        ['teacher-user-1', idempotencyKey]
+        [userId, idempotencyKey]
       )
 
       // Middleware should replay: same hash
@@ -225,7 +227,7 @@ describe('Idempotency Closed Loop', () => {
           request_hash, response_status, response_body, state
         ) VALUES ($1, $2, $3, $4, $5, 201, $6, 'Succeeded')`,
         [
-          'teacher-user-1',
+          userId,
           null,
           idempotencyKey,
           endpoint1,
@@ -248,7 +250,7 @@ describe('Idempotency Closed Loop', () => {
         `SELECT request_hash
          FROM idempotency_record
          WHERE user_id = $1 AND idempotency_key = $2`,
-        ['teacher-user-1', idempotencyKey]
+        [userId, idempotencyKey]
       )
 
       expect(existing.request_hash).toBe(requestHash1)
@@ -282,7 +284,7 @@ describe('Idempotency Closed Loop', () => {
           request_hash, response_status, response_body, state
         ) VALUES ($1, $2, $3, $4, $5, 201, $6, 'Succeeded')`,
         [
-          'teacher-user-1',
+          userId,
           null,
           idempotencyKey,
           endpoint1,
@@ -306,7 +308,7 @@ describe('Idempotency Closed Loop', () => {
         `SELECT endpoint, request_hash
          FROM idempotency_record
          WHERE user_id = $1 AND idempotency_key = $2`,
-        ['teacher-user-1', idempotencyKey]
+        [userId, idempotencyKey]
       )
 
       expect(existing.endpoint).toBe(endpoint1)
