@@ -475,12 +475,26 @@ export type CreatePackageRequest = {
   note?: string
 }
 
-export type AddPackageTransactionRequest = {
-  mode: 'add' | 'deduct' | 'set'
-  sessions: number
-  type?: PackageTransactionType // required when mode='set'
-  note?: string
-}
+// Package transaction request discriminated by mode (impl-guide.md §5.6)
+// add/deduct: NO client-supplied type (server generates MANUAL_ADD/MANUAL_DEDUCT)
+// set: type REQUIRED and must be PURCHASE_ADJUSTMENT or BALANCE_ADJUSTMENT
+export type AddPackageTransactionRequest =
+  | {
+      mode: 'add'
+      sessions: number // must be > 0
+      note?: string
+    }
+  | {
+      mode: 'deduct'
+      sessions: number // must be > 0
+      note?: string
+    }
+  | {
+      mode: 'set'
+      sessions: number // >= 0
+      type: 'PURCHASE_ADJUSTMENT' | 'BALANCE_ADJUSTMENT' // REQUIRED for set
+      note?: string
+    }
 
 export type CreateCourseRequest = {
   name: string

@@ -60,6 +60,25 @@ Before merge, fixed exactly four contract blockers against CURRENT `docs/impl-gu
 - ✅ `pnpm typecheck` passes
 - ✅ `pnpm test:contract` passes (all 24 fixtures validate against real schemas)
 
+### Final Merge Blocker: AddPackageTransactionRequest Discriminated Union ✅
+
+**Issue:** Schema didn't enforce documented accounting semantics at runtime.
+
+**Resolution per impl-guide.md §5.6, mvp.md §12, data-model.md:**
+- Converted to discriminated union by `mode`:
+  - `{ mode: 'add', sessions, note? }` — sessions > 0, NO type (server generates MANUAL_ADD)
+  - `{ mode: 'deduct', sessions, note? }` — sessions > 0, NO type (server generates MANUAL_DEDUCT)
+  - `{ mode: 'set', sessions, type, note? }` — sessions >= 0, type REQUIRED ('PURCHASE_ADJUSTMENT' | 'BALANCE_ADJUSTMENT')
+- Zod schema enforces at runtime:
+  - Rejects `set` without `type`
+  - Rejects `set` with wrong type (e.g., REVERSAL)
+  - Rejects `add`/`deduct` with client-supplied type
+  - Validates positive sessions for add/deduct, nonnegative for set
+
+**Final Verification:**
+- ✅ `pnpm typecheck` passes
+- ✅ `pnpm test:contract` passes
+
 ---
 
 ## ✅ Second Contract-Correction Pass Complete
