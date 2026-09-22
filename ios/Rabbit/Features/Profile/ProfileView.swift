@@ -2,6 +2,7 @@ import SwiftUI
 import RabbitKit
 
 struct ProfileView: View {
+    @Environment(AppEnvironment.self) private var environment
     @EnvironmentObject var sessionStore: SessionStore
     
     var body: some View {
@@ -46,7 +47,7 @@ struct ProfileView: View {
                 Section("管理") {
                     NavigationLink {
                         CourseManagementView(viewModel: CourseListViewModel(
-                            repo: CourseRepository(client: HTTPClient(baseURL: URL(string: ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:8787")!))
+                            repo: environment.courseRepository
                         ))
                     } label: {
                         Label("课程管理", systemImage: "book")
@@ -54,7 +55,7 @@ struct ProfileView: View {
                     
                     NavigationLink {
                         AvailabilityManagementView(viewModel: AvailabilityViewModel(
-                            repo: AvailabilityRepository(client: HTTPClient(baseURL: URL(string: ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:8787")!))
+                            repo: environment.availabilityRepository
                         ))
                     } label: {
                         Label("开放时间", systemImage: "clock")

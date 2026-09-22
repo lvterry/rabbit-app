@@ -7,10 +7,10 @@ import Observation
 @MainActor
 public final class AppEnvironment {
     public let apiClient: HTTPClient
-    public let bookingRepository: any BookingRepositoryProtocol
-    public let studentRepository: any StudentRepositoryProtocol
-    public let courseRepository: any CourseRepositoryProtocol
-    public let availabilityRepository: any AvailabilityRepositoryProtocol
+    public let bookingRepository: BookingRepository
+    public let studentRepository: StudentRepository
+    public let courseRepository: CourseRepository
+    public let availabilityRepository: AvailabilityRepository
     
     public init() {
         // Read configuration from environment or use defaults
@@ -19,7 +19,7 @@ public final class AppEnvironment {
         
         self.apiClient = HTTPClient(baseURL: baseURL, clientVersion: "1.0.0")
         
-        // Create repositories
+        // Create repositories - all shared across the app
         self.bookingRepository = BookingRepository(client: apiClient)
         self.studentRepository = StudentRepository(client: apiClient)
         self.courseRepository = CourseRepository(client: apiClient)

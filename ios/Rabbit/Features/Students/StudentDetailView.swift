@@ -4,6 +4,7 @@ import RabbitKit
 struct StudentDetailView: View {
     @Bindable var viewModel: StudentDetailViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppEnvironment.self) private var environment
     @State private var showAddPackage = false
     @State private var showAddBooking = false
     @State private var showInvite = false
@@ -149,7 +150,17 @@ struct StudentDetailView: View {
                 if !detail.upcoming.isEmpty {
                     Section("即将上课") {
                         ForEach(detail.upcoming) { booking in
-                            BookingRow(booking: booking)
+                            NavigationLink {
+                                BookingDetailView(
+                                    viewModel: BookingDetailViewModel(
+                                        bookingId: booking.bookingId,
+                                        repo: environment.bookingRepository
+                                    )
+                                )
+                            } label: {
+                                BookingRow(booking: booking)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -158,20 +169,30 @@ struct StudentDetailView: View {
                 if !detail.history.isEmpty {
                     Section("历史课程") {
                         ForEach(detail.history.prefix(5)) { booking in
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(booking.dateLabel)
-                                        .font(.subheadline)
+                            NavigationLink {
+                                BookingDetailView(
+                                    viewModel: BookingDetailViewModel(
+                                        bookingId: booking.bookingId,
+                                        repo: environment.bookingRepository
+                                    )
+                                )
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text(booking.dateLabel)
+                                            .font(.subheadline)
+                                        
+                                        Spacer()
+                                        
+                                        StatusBadge(status: booking.status)
+                                    }
                                     
-                                    Spacer()
-                                    
-                                    StatusBadge(status: booking.status)
+                                    Text(booking.courseName)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                 }
-                                
-                                Text(booking.courseName)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
                             }
+                            .buttonStyle(.plain)
                         }
                         
                         if detail.history.count > 5 {

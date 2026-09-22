@@ -219,6 +219,7 @@ struct DayDetailView: View {
     let date: String
     @Bindable var viewModel: CalendarViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppEnvironment.self) private var environment
     
     var body: some View {
         NavigationStack {
@@ -233,7 +234,17 @@ struct DayDetailView: View {
                     if !day.bookings.isEmpty {
                         Section("课程安排") {
                             ForEach(day.bookings) { booking in
-                                BookingRow(booking: booking, showDate: false)
+                                NavigationLink {
+                                    BookingDetailView(
+                                        viewModel: BookingDetailViewModel(
+                                            bookingId: booking.bookingId,
+                                            repo: environment.bookingRepository
+                                        )
+                                    )
+                                } label: {
+                                    BookingRow(booking: booking, showDate: false)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     } else {

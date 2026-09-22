@@ -3,6 +3,7 @@ import RabbitKit
 
 struct TodayView: View {
     @Bindable var viewModel: TodayViewModel
+    @Environment(AppEnvironment.self) private var environment
     @State private var showAddBooking = false
     
     var body: some View {
@@ -39,8 +40,18 @@ struct TodayView: View {
                                         .padding(.horizontal)
                                     
                                     ForEach(day.pending) { booking in
-                                        BookingRow(booking: booking, showDate: false)
-                                            .padding(.horizontal)
+                                        NavigationLink {
+                                            BookingDetailView(
+                                                viewModel: BookingDetailViewModel(
+                                                    bookingId: booking.bookingId,
+                                                    repo: environment.bookingRepository
+                                                )
+                                            )
+                                        } label: {
+                                            BookingRow(booking: booking, showDate: false)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .padding(.horizontal)
                                     }
                                 }
                             }
@@ -53,8 +64,18 @@ struct TodayView: View {
                                         .padding(.horizontal)
                                     
                                     ForEach(day.bookings) { booking in
-                                        BookingRow(booking: booking, showDate: false)
-                                            .padding(.horizontal)
+                                        NavigationLink {
+                                            BookingDetailView(
+                                                viewModel: BookingDetailViewModel(
+                                                    bookingId: booking.bookingId,
+                                                    repo: environment.bookingRepository
+                                                )
+                                            )
+                                        } label: {
+                                            BookingRow(booking: booking, showDate: false)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .padding(.horizontal)
                                     }
                                 }
                             }
@@ -120,8 +141,8 @@ struct TodayView: View {
             }
             .sheet(isPresented: $showAddBooking) {
                 AddBookingView(viewModel: AddBookingViewModel(
-                    studentRepo: StudentRepository(client: HTTPClient(baseURL: URL(string: ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:8787")!)),
-                    bookingRepo: viewModel.repo as! BookingRepository
+                    studentRepo: environment.studentRepository,
+                    bookingRepo: environment.bookingRepository
                 ))
             }
         }

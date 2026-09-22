@@ -3,6 +3,7 @@ import RabbitKit
 
 struct StudentListView: View {
     @Bindable var viewModel: StudentListViewModel
+    @Environment(AppEnvironment.self) private var environment
     @State private var showAddStudent = false
     
     var body: some View {
@@ -70,8 +71,8 @@ struct StudentListView: View {
             }
             .sheet(isPresented: $showAddStudent) {
                 AddStudentView(viewModel: AddStudentViewModel(
-                    studentRepo: viewModel.studentRepo,
-                    courseRepo: CourseRepository(client: HTTPClient(baseURL: URL(string: ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:8787")!))
+                    studentRepo: environment.studentRepository,
+                    courseRepo: environment.courseRepository
                 ))
             }
         }
