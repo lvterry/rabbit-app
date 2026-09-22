@@ -352,7 +352,7 @@ export function createSessionRouter(deps: {
       createSuccessEnvelope(
         {
           cards,
-          bound: !!student.student.userId
+          bound: student.student.bound
         },
         req.requestId
       )
