@@ -317,6 +317,8 @@ If failures are environmental (missing scripts, wrong DATABASE_URL format), Arch
 
 **Full user journey on real stack** (Postgres + API + Web/iOS):
 
+> **Detailed checklist:** See `docs/wave1-stabilization-e2e.md` for the complete E2E exit gate runbook, including journey steps, accounting assertions, ownership table, local prerequisites, and pass/fail criteria.
+
 1. Teacher creates student with invite
 2. Student enters via invite link
 3. Student sees course credits on home
