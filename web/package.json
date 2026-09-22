@@ -8,17 +8,29 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest"
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
+    "@preact/signals": "^1.2.2",
     "@rabbit/shared": "workspace:*",
     "preact": "^10.19.3",
-    "preact-router": "^4.1.2",
-    "@preact/signals": "^1.2.2"
+    "preact-router": "^4.1.2"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
+    "@playwright/test": "^1.63.0",
     "@preact/preset-vite": "^2.8.1",
+    "@types/node": "^20.10.0",
+<<<<<<< HEAD
+<<<<<<< HEAD
+    "dotenv": "^16.6.1",
+=======
+>>>>>>> 080a3dc (Add Playwright E2E tests for student web flow)
+=======
+    "dotenv": "^16.6.1",
+>>>>>>> 1ae2983 (Update E2E setup to align with Maya's seed contract)
     "typescript": "^5.3.3",
     "vite": "^5.0.7",
     "vitest": "^1.1.0"

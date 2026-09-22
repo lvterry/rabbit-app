@@ -11,6 +11,7 @@ build/
 .env
 .env.local
 .env.*.local
+.env.test
 
 # Logs
 logs/
@@ -28,6 +29,9 @@ pnpm-debug.log*
 
 # Testing
 coverage/
+test-results/
+playwright-report/
+playwright/.cache/
 
 # Database
 *.db
