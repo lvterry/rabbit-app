@@ -651,9 +651,15 @@ export class BookingRepositoryImpl implements BookingRepository {
           .update(JSON.stringify({ bookingId }))
           .digest('hex')
       })()
+
+      await client.query('COMMIT')
+
+      // Fetch full result first
+      const result = await this.findById(bookingId)
       
+      // Write idempotency record with full response (after COMMIT)
       try {
-        await client.query(
+        await this.pool.query(
           `INSERT INTO idempotency_record (
             user_id, student_id, idempotency_key, endpoint,
             request_hash, response_status, response_body, state
@@ -664,16 +670,13 @@ export class BookingRepositoryImpl implements BookingRepository {
             idempotencyKey,
             finalEndpoint,
             finalRequestHash,
-            JSON.stringify({ ok: true, data: { bookingId } })
+            JSON.stringify({ ok: true, data: result })
           ]
         )
       } catch (idemError: any) {
         if (idemError.code !== '23505') throw idemError
       }
-
-      await client.query('COMMIT')
-
-      const result = await this.findById(bookingId)
+      
       return result!
 
     } catch (error) {
