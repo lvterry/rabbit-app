@@ -93,8 +93,8 @@ async function seedTestData() {
   userId = userResult.rows[0].id
 
   const teacherResult = await pool.query(
-    `INSERT INTO teacher_profile (user_id, name, timezone, min_lead_hours, free_cancel_hours)
-     VALUES ($1, 'E2E Teacher', 'Asia/Shanghai', 2, 24)
+    `INSERT INTO teacher_profile (user_id, name, timezone, min_lead_hours, free_cancel_hours, max_advance_days)
+     VALUES ($1, 'E2E Teacher', 'Asia/Shanghai', 2, 24, 60)
      RETURNING id`,
     [userId]
   )
