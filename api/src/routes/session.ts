@@ -9,7 +9,7 @@
  */
 
 import { Router } from 'express'
-import type { TeacherRepository, StudentRepository, BookingRepository, PackageRepository } from '../ports'
+import type { TeacherRepository, StudentRepository, BookingRepository, PackageRepository, CourseRepository } from '../ports'
 import { createSuccessEnvelope, AppError, asyncHandler } from '../http'
 import { ErrorCode } from '@rabbit/shared'
 import { authMiddleware, requireAuth } from '../middleware'
@@ -19,6 +19,7 @@ export function createSessionRouter(deps: {
   studentRepo: StudentRepository
   bookingRepo: BookingRepository
   packageRepo: PackageRepository
+  courseRepo: CourseRepository
 }): Router {
   const router = Router()
 
@@ -145,15 +146,10 @@ export function createSessionRouter(deps: {
     // Get today's bookings for this teacher
     const today = new Date().toISOString().substring(0, 10)
     const dayView = await deps.bookingRepo.getTeacherDayView(teacher.teacherId, today)
-    
-    const bookings = dayView.bookings
 
     res.json(
       createSuccessEnvelope(
-        {
-          date: today,
-          bookings,
-        },
+        dayView,
         req.requestId
       )
     )
@@ -313,14 +309,26 @@ export function createSessionRouter(deps: {
     
     // Build courses summary
     const coursesMap = new Map()
+    const courseIds = new Set(packages.map(pkg => pkg.courseId))
+    
+    // Fetch all course details
+    const courseDetailsMap = new Map()
+    for (const courseId of courseIds) {
+      const course = await deps.courseRepo.findById(courseId)
+      if (course) {
+        courseDetailsMap.set(courseId, course)
+      }
+    }
+    
     for (const pkg of packages) {
       if (!coursesMap.has(pkg.courseId)) {
+        const courseDetails = courseDetailsMap.get(pkg.courseId)
         const nextBooking = upcomingBookings.find((b: any) => b.courseId === pkg.courseId)
         coursesMap.set(pkg.courseId, {
           courseId: pkg.courseId,
           courseName: pkg.courseName,
-          durationMinutes: 0, // TODO: get from course
-          allowSelfBooking: true, // TODO: get from course
+          durationMinutes: courseDetails?.durationMinutes ?? 0,
+          allowSelfBooking: courseDetails?.allowSelfBooking ?? true,
           remaining: 0,
           purchased: null,
           batchCount: 0,
@@ -336,6 +344,14 @@ export function createSessionRouter(deps: {
       if (pkg.status === 'Active') {
         course.purchased = course.batchCount === 1 ? pkg.purchasedSessions : null
       }
+    }
+    
+    // Calculate available, exhausted, and fullyReserved for each course
+    for (const course of coursesMap.values()) {
+      const reserved = upcomingBookings.filter((b: any) => b.courseId === course.courseId).length
+      course.available = Math.max(0, course.remaining - reserved)
+      course.exhausted = course.remaining === 0
+      course.fullyReserved = course.remaining > 0 && course.available === 0
     }
 
     const cards = [{

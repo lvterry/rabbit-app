@@ -177,7 +177,9 @@ async function seed(): Promise<SeedOutput> {
 }
 
 // Run seed and output JSON
-if (require.main === module) {
+import { pathToFileURL } from 'url'
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   seed()
     .then(output => {
       console.log(JSON.stringify(output, null, 2))
