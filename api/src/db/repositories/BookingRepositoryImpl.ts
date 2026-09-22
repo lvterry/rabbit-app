@@ -300,7 +300,9 @@ export class BookingRepositoryImpl implements BookingRepository {
   async create(
     data: CreateBookingRequest,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView> {
     const client = await this.pool.connect()
 
@@ -523,12 +525,14 @@ export class BookingRepositoryImpl implements BookingRepository {
         ]
       )
 
-      // Step 9: Record idempotency (P0 #5: with SHA-256 hash)
-      // Note: requestHash should be passed from middleware, but for now compute inline
-      const crypto = await import('crypto')
-      const requestHash = crypto.createHash('sha256')
-        .update(JSON.stringify({ courseId: data.courseId, startAt: data.startAt, studentId: data.studentId }))
-        .digest('hex')
+      // Step 9: Record idempotency (P0 #5: with SHA-256 hash from middleware)
+      const finalEndpoint = endpoint || 'POST /v1/bookings'
+      const finalRequestHash = requestHash || (() => {
+        const crypto = require('crypto')
+        return crypto.createHash('sha256')
+          .update(JSON.stringify({ courseId: data.courseId, startAt: data.startAt, studentId: data.studentId }))
+          .digest('hex')
+      })()
       
       // Use INSERT ... ON CONFLICT DO NOTHING for idempotency
       // The unique indexes handle the conflict detection
@@ -537,12 +541,13 @@ export class BookingRepositoryImpl implements BookingRepository {
           `INSERT INTO idempotency_record (
             user_id, student_id, idempotency_key, endpoint,
             request_hash, response_status, response_body, state
-          ) VALUES ($1, $2, $3, 'create_booking', $4, 201, $5, 'Succeeded')`,
+          ) VALUES ($1, $2, $3, $4, $5, 201, $6, 'Succeeded')`,
           [
             principal.userId,
             principal.studentId,
             idempotencyKey,
-            requestHash,
+            finalEndpoint,
+            finalRequestHash,
             JSON.stringify({ ok: true, data: { bookingId: booking.id } })
           ]
         )
@@ -577,7 +582,9 @@ export class BookingRepositoryImpl implements BookingRepository {
   async complete(
     bookingId: string,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView> {
     const client = await this.pool.connect()
 
@@ -635,23 +642,27 @@ export class BookingRepositoryImpl implements BookingRepository {
         [bookingId]
       )
 
-      // P0 #5: Record idempotency success
-      const crypto = await import('crypto')
-      const requestHash = crypto.createHash('sha256')
-        .update(JSON.stringify({ bookingId }))
-        .digest('hex')
+      // P0 #5: Record idempotency success (use middleware values)
+      const finalEndpoint = endpoint || `POST /v1/bookings/${bookingId}/completion`
+      const finalRequestHash = requestHash || (() => {
+        const crypto = require('crypto')
+        return crypto.createHash('sha256')
+          .update(JSON.stringify({ bookingId }))
+          .digest('hex')
+      })()
       
       try {
         await client.query(
           `INSERT INTO idempotency_record (
             user_id, student_id, idempotency_key, endpoint,
             request_hash, response_status, response_body, state
-          ) VALUES ($1, $2, $3, 'complete_booking', $4, 200, $5, 'Succeeded')`,
+          ) VALUES ($1, $2, $3, $4, $5, 200, $6, 'Succeeded')`,
           [
             principal.userId,
             principal.studentId,
             idempotencyKey,
-            requestHash,
+            finalEndpoint,
+            finalRequestHash,
             JSON.stringify({ ok: true, data: { bookingId } })
           ]
         )
@@ -684,7 +695,9 @@ export class BookingRepositoryImpl implements BookingRepository {
   async undoCompletion(
     bookingId: string,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView> {
     const client = await this.pool.connect()
 
@@ -747,23 +760,27 @@ export class BookingRepositoryImpl implements BookingRepository {
         [bookingId]
       )
 
-      // P0 #5: Record idempotency success
-      const crypto = await import('crypto')
-      const requestHash = crypto.createHash('sha256')
-        .update(JSON.stringify({ bookingId }))
-        .digest('hex')
+      // P0 #5: Record idempotency success (use middleware values)
+      const finalEndpoint = endpoint || `DELETE /v1/bookings/${bookingId}/completion`
+      const finalRequestHash = requestHash || (() => {
+        const crypto = require('crypto')
+        return crypto.createHash('sha256')
+          .update(JSON.stringify({ bookingId }))
+          .digest('hex')
+      })()
       
       try {
         await client.query(
           `INSERT INTO idempotency_record (
             user_id, student_id, idempotency_key, endpoint,
             request_hash, response_status, response_body, state
-          ) VALUES ($1, $2, $3, 'undo_completion', $4, 200, $5, 'Succeeded')`,
+          ) VALUES ($1, $2, $3, $4, $5, 200, $6, 'Succeeded')`,
           [
             principal.userId,
             principal.studentId,
             idempotencyKey,
-            requestHash,
+            finalEndpoint,
+            finalRequestHash,
             JSON.stringify({ ok: true, data: { bookingId } })
           ]
         )
@@ -787,7 +804,9 @@ export class BookingRepositoryImpl implements BookingRepository {
   async cancel(
     bookingId: string,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView> {
     const client = await this.pool.connect()
 
@@ -859,23 +878,27 @@ export class BookingRepositoryImpl implements BookingRepository {
         [cancelledBy, policy, bookingId]
       )
 
-      // P0 #5: Record idempotency success
-      const crypto = await import('crypto')
-      const requestHash = crypto.createHash('sha256')
-        .update(JSON.stringify({ bookingId }))
-        .digest('hex')
+      // P0 #5: Record idempotency success (use middleware values)
+      const finalEndpoint = endpoint || `POST /v1/bookings/${bookingId}/cancellation`
+      const finalRequestHash = requestHash || (() => {
+        const crypto = require('crypto')
+        return crypto.createHash('sha256')
+          .update(JSON.stringify({ bookingId }))
+          .digest('hex')
+      })()
       
       try {
         await client.query(
           `INSERT INTO idempotency_record (
             user_id, student_id, idempotency_key, endpoint,
             request_hash, response_status, response_body, state
-          ) VALUES ($1, $2, $3, 'cancel_booking', $4, 200, $5, 'Succeeded')`,
+          ) VALUES ($1, $2, $3, $4, $5, 200, $6, 'Succeeded')`,
           [
             principal.userId,
             principal.studentId,
             idempotencyKey,
-            requestHash,
+            finalEndpoint,
+            finalRequestHash,
             JSON.stringify({ ok: true, data: { bookingId } })
           ]
         )
@@ -911,7 +934,9 @@ export class BookingRepositoryImpl implements BookingRepository {
     bookingId: string,
     data: RescheduleBookingRequest,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView> {
     const client = await this.pool.connect()
 
@@ -1121,37 +1146,33 @@ export class BookingRepositoryImpl implements BookingRepository {
         ]
       )
 
-      // Create BOOKING_CREATED transaction for new booking
-      await client.query(
-        `SELECT * FROM apply_package_transaction(
-          $1, 'SESSION_COMPLETED', -1, $2, NULL, 'Rescheduled booking', $3, $4
-        )`,
-        [newPackage.id, newBooking.id, principal.userId, principal.studentId]
-      )
-
       // Link bookings
       await client.query(
         `UPDATE booking SET rescheduled_to_booking_id = $1 WHERE id = $2`,
         [newBooking.id, bookingId]
       )
 
-      // P0 #5: Record idempotency success
-      const crypto = await import('crypto')
-      const requestHash = crypto.createHash('sha256')
-        .update(JSON.stringify({ bookingId, newStartAt: data.newStartAt }))
-        .digest('hex')
+      // P0 #5: Record idempotency success (use middleware values)
+      const finalEndpoint = endpoint || `POST /v1/bookings/${bookingId}/reschedule`
+      const finalRequestHash = requestHash || (() => {
+        const crypto = require('crypto')
+        return crypto.createHash('sha256')
+          .update(JSON.stringify({ bookingId, newStartAt: data.newStartAt }))
+          .digest('hex')
+      })()
       
       try {
         await client.query(
           `INSERT INTO idempotency_record (
             user_id, student_id, idempotency_key, endpoint,
             request_hash, response_status, response_body, state
-          ) VALUES ($1, $2, $3, 'reschedule_booking', $4, 200, $5, 'Succeeded')`,
+          ) VALUES ($1, $2, $3, $4, $5, 200, $6, 'Succeeded')`,
           [
             principal.userId,
             principal.studentId,
             idempotencyKey,
-            requestHash,
+            finalEndpoint,
+            finalRequestHash,
             JSON.stringify({ ok: true, data: { bookingId: newBooking.id } })
           ]
         )
