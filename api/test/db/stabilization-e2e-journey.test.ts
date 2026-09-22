@@ -252,6 +252,7 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
 
     expect(booking1Res.body.ok).toBe(true)
     const booking1Id = booking1Res.body.data.bookingId
+    ; (global as any).booking1Id = booking1Id  // Save for later tests
 
     // Booking 2
     const booking2Res = await request
@@ -266,6 +267,7 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
 
     expect(booking2Res.body.ok).toBe(true)
     const booking2Id = booking2Res.body.data.bookingId
+    ; (global as any).booking2Id = booking2Id  // Save for later tests
 
     // Verify bookings in DB
     const bookingsCheck = await pool.query(
