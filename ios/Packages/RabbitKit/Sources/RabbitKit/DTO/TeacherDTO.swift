@@ -2,13 +2,14 @@ import Foundation
 
 // MARK: - Teacher Profile
 
-/// Teacher profile
+/// Teacher profile from GET /v1/me
 public struct Teacher: Codable, Identifiable {
     public let teacherId: String
     public let userId: String
     public let name: String
-    public let avatarUrl: String?
+    public let avatar: String?
     public let bio: String?
+    public let timezone: String
     
     // Booking rules (snapshots for new bookings)
     public let slotStepMinutes: Int
@@ -19,7 +20,7 @@ public struct Teacher: Codable, Identifiable {
     public let undoCompleteDays: Int
     public let maxReschedules: Int
     
-    public let createdAt: String
+    public let status: String
     
     public var id: String { teacherId }
 }

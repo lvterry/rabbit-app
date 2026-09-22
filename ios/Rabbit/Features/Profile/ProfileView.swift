@@ -12,8 +12,8 @@ struct ProfileView: View {
                 if let teacher = sessionStore.teacher {
                     Section {
                         HStack {
-                            if let avatarUrl = teacher.avatarUrl {
-                                AsyncImage(url: URL(string: avatarUrl)) { image in
+                            if let avatar = teacher.avatar {
+                                AsyncImage(url: URL(string: avatar)) { image in
                                     image
                                         .resizable()
                                         .aspectRatio(contentMode: .fill)

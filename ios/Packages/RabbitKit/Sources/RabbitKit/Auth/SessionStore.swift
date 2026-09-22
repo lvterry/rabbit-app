@@ -48,9 +48,13 @@ public final class SessionStore: ObservableObject {
             return
         }
         
-        // TODO: Use refresh token to get new access token
-        // For now, just mark as authenticated if we have a refresh token
-        // Real implementation would call POST /v1/auth/refresh
+        // Attempt to refresh access token and restore session
+        do {
+            try await refreshAccessToken()
+        } catch {
+            // If refresh fails, clear invalid session
+            clearSession()
+        }
     }
     
     // MARK: - Token Refresh
@@ -65,9 +69,87 @@ public final class SessionStore: ObservableObject {
             )
         }
         
-        // TODO: Implement actual refresh API call
-        // POST /v1/auth/refresh with refresh token
-        // Update accessToken with new token
+        // Get base URL from environment
+        let baseURLString = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:8787"
+        guard let baseURL = URL(string: baseURLString) else {
+            throw RabbitAPIError.invalidResponse
+        }
+        
+        // Call POST /v1/auth/refresh to get new access token
+        let refreshURL = baseURL.appendingPathComponent("v1/auth/refresh")
+        var request = URLRequest(url: refreshURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        struct RefreshRequest: Encodable {
+            let refreshToken: String
+        }
+        
+        let refreshRequest = RefreshRequest(refreshToken: refreshToken)
+        let encoder = JSONEncoder()
+        request.httpBody = try encoder.encode(refreshRequest)
+        
+        // Execute request
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw RabbitAPIError.invalidResponse
+        }
+        
+        if httpResponse.statusCode >= 400 {
+            throw RabbitAPIError.serverError(
+                code: ErrorCode.tokenExpired,
+                message: "Failed to refresh token",
+                retryable: false,
+                details: nil
+            )
+        }
+        
+        // Decode response
+        struct RefreshResponse: Decodable {
+            let accessToken: String
+            let expiresIn: Int
+        }
+        
+        let decoder = JSONDecoder()
+        let envelope = try decoder.decode(APIResponse<RefreshResponse>.self, from: data)
+        let refreshResponse = envelope.data
+        
+        // Update access token
+        self.accessToken = refreshResponse.accessToken
+        
+        // Fetch current user info to restore full session
+        let meURL = baseURL.appendingPathComponent("v1/me")
+        var meRequest = URLRequest(url: meURL)
+        meRequest.httpMethod = "GET"
+        meRequest.setValue("Bearer \(refreshResponse.accessToken)", forHTTPHeaderField: "Authorization")
+        meRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (meData, meResponse) = try await URLSession.shared.data(for: meRequest)
+        
+        guard let meHttpResponse = meResponse as? HTTPURLResponse,
+              meHttpResponse.statusCode < 400 else {
+            throw RabbitAPIError.invalidResponse
+        }
+        
+        let meEnvelope = try decoder.decode(APIResponse<MeView>.self, from: meData)
+        let meView = meEnvelope.data
+        
+        // Auth gate: only authenticate if user is a teacher with valid profile
+        guard meView.isTeacher, let teacher = meView.teacher else {
+            // Not a teacher or teacher profile missing - fail closed
+            clearSession()
+            throw RabbitAPIError.serverError(
+                code: ErrorCode.forbidden,
+                message: "User is not a teacher",
+                retryable: false,
+                details: nil
+            )
+        }
+        
+        self.currentUser = meView.user
+        self.teacher = teacher
+        self.isAuthenticated = true
     }
 }
 
