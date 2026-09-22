@@ -63,8 +63,9 @@ beforeAll(async () => {
   const app = createRealApp(pool)
   request = supertest(app)
 
-  // Clean up any stale idempotency records from previous runs
-  await pool.query('DELETE FROM idempotency_record WHERE endpoint LIKE $1', ['%/bookings/%/completion'])
+  // Clean up ALL stale idempotency records from previous test runs
+  // (endpoint might vary with different booking UUIDs, so delete all)
+  await pool.query('DELETE FROM idempotency_record')
 
   // Seed test data
   await seedTestData()
