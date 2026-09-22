@@ -44,22 +44,41 @@ pnpm build
 
 When `VITE_USE_FIXTURES=1`:
 - GET requests map to fixture files in `../contracts/fixtures/`
-- POST requests return appropriate mock responses with proper envelope structure
+- POST requests load responses from fixture files (not inline stubs)
 - Fixtures include full `{ok, data, meta}` envelope (no double wrapping)
-- Vite middleware serves contracts directly (zero duplication)
+- Vite middleware serves contracts directly during dev
+- Production build copies fixtures to `dist/contracts/fixtures/`
 
 ### Fixture Path Mapping
 
 | API Path | Fixture File |
 |----------|--------------|
-| `GET /v1/invites/:token` | `contracts/fixtures/invites/pending.json` |
+| `GET /v1/invites/:token` | Based on token value (see below) |
 | `GET /v1/me/student-home` | `contracts/fixtures/students/student-home-anonymous.json` |
-| `GET /v1/me/student-bookings` | Synthetic response from booking fixtures |
+| `GET /v1/me/student-bookings` | Synthetic from `bookings/upcoming-student.json` & `completed.json` |
 | `GET /v1/bookings/:id` | `contracts/fixtures/bookings/upcoming-student.json` |
 | `GET /v1/teachers/:tid/bookable-days` | `contracts/fixtures/slots/bookable-days.json` |
 | `GET /v1/teachers/:tid/slots` | `contracts/fixtures/slots/slots.json` |
-| `POST /v1/invites/:token/accept` | Synthetic with `{accessToken, redirectTo}` |
-| `POST /v1/bookings` | Synthetic booking creation response |
+| `POST /v1/invites/:token/accept` | `contracts/fixtures/invites/consumed-matching-session.json` |
+| `POST /v1/bookings` | `contracts/fixtures/bookings/upcoming-student.json` (wrapped) |
+| `POST /v1/bookings/:id/cancellation` | `contracts/fixtures/bookings/cancelled-free.json` (adapted) |
+| `POST /v1/bookings/:id/reschedule` | `contracts/fixtures/bookings/upcoming-student.json` (adapted) |
+
+### Invite Token Convention
+
+To test different invite states in fixture mode, use these token values:
+
+| Token Value | Fixture Loaded | Use Case |
+|-------------|----------------|----------|
+| `pending` (default) | `invites/pending.json` | First-time invite (US-09) |
+| `accepted` or `consumed` | `invites/consumed-matching-session.json` | Already accepted (US-10) |
+| `expired` | `errors/token-expired.json` | Expired invite |
+| `foreign` | `invites/consumed-foreign-session-error.json` | Accepted by different user |
+
+**Examples:**
+- `/i/pending` → shows pending invite → accept redirects to home
+- `/i/accepted` → shows "已接受" message with redirect button
+- `/i/expired` → shows expiration error
 
 ## Routes
 
@@ -90,3 +109,34 @@ Following `impl-guide.md` requirements:
 7. ✅ Actions driven by server `actions` field
 8. ✅ No client timezone formatting (uses ISO strings or server display fields)
 9. ✅ Single source of truth for fixtures (contracts/fixtures/)
+
+## Production Build with Fixtures
+
+Fixture mode works in both dev and production:
+
+```bash
+# Build with fixtures support
+pnpm build
+
+# Preview production build with fixtures
+VITE_USE_FIXTURES=1 pnpm preview
+
+# Or serve dist/ with any static server
+```
+
+The build automatically copies `contracts/fixtures/` to `dist/contracts/fixtures/` so fixture mode works identically in production.
+
+## Wave 2 Integration Notes
+
+**Known discrepancies accepted as Wave 2 work:**
+- Contract uses `alreadyAccepted` field; UI uses `redirectTo` presence
+- Teacher/student IDs in fixtures may not match actual DB IDs
+- Fixture uses `accessToken` in response; real backend may use session cookies
+- POST booking responses return wrapped `{ bookingId, booking }` per contract
+
+**When integrating with real backend:**
+1. Remove `VITE_USE_FIXTURES=1` flag
+2. Set `VITE_API_BASE=<backend-url>`
+3. Verify session/auth cookie handling works
+4. Test all error codes and retry logic
+5. Confirm timezone/locale handling matches fixtures

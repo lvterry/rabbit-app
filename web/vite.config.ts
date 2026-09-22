@@ -21,6 +21,31 @@ export default defineConfig({
           next()
         })
       },
+      closeBundle() {
+        const contractsDir = path.resolve(__dirname, '../contracts/fixtures')
+        const outDir = path.resolve(__dirname, 'dist/contracts/fixtures')
+        
+        if (fs.existsSync(contractsDir)) {
+          fs.mkdirSync(outDir, { recursive: true })
+          
+          function copyDir(src: string, dest: string) {
+            const entries = fs.readdirSync(src, { withFileTypes: true })
+            for (const entry of entries) {
+              const srcPath = path.join(src, entry.name)
+              const destPath = path.join(dest, entry.name)
+              if (entry.isDirectory()) {
+                fs.mkdirSync(destPath, { recursive: true })
+                copyDir(srcPath, destPath)
+              } else {
+                fs.copyFileSync(srcPath, destPath)
+              }
+            }
+          }
+          
+          copyDir(contractsDir, outDir)
+          console.log('✓ Copied contracts/fixtures to dist/contracts/fixtures')
+        }
+      },
     },
   ],
   resolve: {
