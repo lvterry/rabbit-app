@@ -154,13 +154,13 @@ struct StudentDetailView: View {
                                 BookingDetailView(
                                     viewModel: BookingDetailViewModel(
                                         bookingId: booking.bookingId,
-                                        repo: environment.bookingRepository
+                                        repo: environment.bookingRepository,
+                                        initialBooking: booking
                                     )
                                 )
                             } label: {
                                 BookingRow(booking: booking)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                 }
