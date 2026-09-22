@@ -54,9 +54,10 @@ public actor HTTPClient {
     }
     
     public func delete<T: Decodable>(
-        _ endpoint: Endpoint
+        _ endpoint: Endpoint,
+        idempotencyKey: String? = nil
     ) async throws -> T {
-        try await request(endpoint: endpoint, method: "DELETE")
+        try await request(endpoint: endpoint, method: "DELETE", idempotencyKey: idempotencyKey)
     }
     
     // MARK: - Core Request

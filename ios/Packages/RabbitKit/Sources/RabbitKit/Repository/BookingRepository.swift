@@ -77,7 +77,8 @@ public actor BookingRepository: BookingRepositoryProtocol {
     }
     
     public func undoCompletion(id: String) async throws -> Booking {
-        return try await client.delete(.bookingCompletion(id))
+        let idempotencyKey = UUID().uuidString
+        return try await client.delete(.bookingCompletion(id), idempotencyKey: idempotencyKey)
     }
     
     public func cancelBooking(id: String, reason: String? = nil) async throws -> Booking {
