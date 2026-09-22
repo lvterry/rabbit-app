@@ -184,6 +184,79 @@ export function createAuthRouter(deps: {
   }))
 
   /**
+   * POST /v1/auth/dev/teacher
+   * 
+   * Development-only teacher authentication (for iOS E2E testing)
+   * 
+   * Only available when NODE_ENV is 'development' or 'test'
+   * Returns real User session tokens for seeded teacher
+   * 
+   * NOT DEMO_MODE - real tokens work against real API routes
+   */
+  router.post('/dev/teacher', asyncHandler(async (req, res) => {
+    const env = process.env.NODE_ENV || 'development'
+    
+    // Only available in development or test
+    if (env !== 'development' && env !== 'test') {
+      res.status(404).json({
+        ok: false,
+        code: 'NOT_FOUND',
+        message: 'Not found',
+        retryable: false,
+        requestId: req.requestId,
+      })
+      return
+    }
+
+    // Optional: allow specifying which teacher by email/ID in body
+    // For simplicity, return the first active teacher in the database
+    const teachers = await deps.teacherRepo.listAll?.() || []
+    const teacher = teachers.find(t => t.status === 'Active') || teachers[0]
+
+    if (!teacher || !teacher.userId) {
+      throw new AppError(ErrorCode.INTERNAL, 'No seeded teacher found. Run seed script first.')
+    }
+
+    // Generate real User session tokens
+    const accessToken = generateUserAccessToken(teacher.userId)
+    const refreshToken = generateUserRefreshToken(teacher.userId)
+
+    res.json(
+      createSuccessEnvelope(
+        {
+          accessToken,
+          refreshToken,
+          expiresIn: 900,
+          user: {
+            userId: teacher.userId,
+            nickname: teacher.name,
+            avatarUrl: teacher.avatar || null,
+          },
+          isTeacher: true,
+          teacher: {
+            teacherId: teacher.teacherId,
+            userId: teacher.userId,
+            name: teacher.name,
+            avatar: teacher.avatar || null,
+            bio: teacher.bio || null,
+            timezone: teacher.timezone,
+            slotStepMinutes: teacher.slotStepMinutes,
+            minLeadHours: teacher.minLeadHours,
+            maxAdvanceDays: teacher.maxAdvanceDays,
+            freeCancelHours: teacher.freeCancelHours,
+            autoSettleHours: teacher.autoSettleHours,
+            undoCompleteDays: teacher.undoCompleteDays,
+            maxReschedules: teacher.maxReschedules,
+            status: teacher.status,
+          },
+          students: [],
+        },
+        req.requestId
+      )
+    )
+  }))
+
+  /**
    * GET /v1/meta
    * 
    * Server metadata (public endpoint)
