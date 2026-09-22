@@ -1,8 +1,0 @@
-{
-  "ok": false,
-  "code": "NETWORK_ERROR",
-  "message": "网络连接失败，请检查网络后重试。",
-  "retryable": true,
-  "details": null,
-  "requestId": "req_error_network_client_only"
-}

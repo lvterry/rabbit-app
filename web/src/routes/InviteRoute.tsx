@@ -180,7 +180,7 @@ export function InviteRoute({ token: tokenProp }: InviteRouteProps) {
           fontSize: 'var(--font-size-xs)',
           color: 'var(--color-text-secondary)',
         }}>
-          到期时间：{new Date(preview.expiresAt).toLocaleDateString()}
+          到期时间：{preview.expiresAt}
         </div>
       </div>
     </div>

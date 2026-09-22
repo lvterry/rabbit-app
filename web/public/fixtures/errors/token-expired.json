@@ -1,8 +1,0 @@
-{
-  "ok": false,
-  "code": "TOKEN_EXPIRED",
-  "message": "登录已过期，请重新登录。",
-  "retryable": true,
-  "details": null,
-  "requestId": "req_error_token_expired"
-}

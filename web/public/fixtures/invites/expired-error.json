@@ -1,8 +1,0 @@
-{
-  "ok": false,
-  "code": "INVITE_EXPIRED",
-  "message": "邀请已过期，请联系老师重新发送。",
-  "retryable": false,
-  "details": null,
-  "requestId": "req_invite_expired"
-}
