@@ -19,7 +19,7 @@ test.describe('Student Web Flow - Real Stack', () => {
     await test.step('1. Enter via invite link', async () => {
       await page.goto(`/i/${inviteToken}`)
 
-      await expect(page.locator('h1')).toContainText('邀请你加入')
+      await expect(page.getByRole('heading', { name: /邀请你加入/ })).toBeVisible()
       
       await expect(page.locator('text=学员：')).toBeVisible()
 
@@ -35,23 +35,16 @@ test.describe('Student Web Flow - Real Stack', () => {
     })
 
     await test.step('2. Student-home shows course credits (cards/bound)', async () => {
-      await expect(page.locator('h1:has-text("我的课")')).toBeVisible()
-      
+      await expect(page.getByRole('heading', { name: '我的课' })).toBeVisible()
+
       const card = page.locator('.card').first()
       await expect(card).toBeVisible()
+      await expect(card.getByText('E2E Teacher')).toBeVisible()
+      await expect(card.getByText('E2E Student')).toBeVisible()
+      await expect(card.getByText(/剩余\s*\d+\s*节/)).toBeVisible()
 
-      const teacherName = card.locator('div[style*="fontWeight: 600"]').first()
-      await expect(teacherName).toBeVisible()
-
-      const studentName = card.locator('.text-secondary').first()
-      await expect(studentName).toBeVisible()
-
-      const courseSection = card.locator('div', { hasText: '剩余' })
-      await expect(courseSection).toBeVisible()
-      const remainingText = await courseSection.textContent()
-      expect(remainingText).toMatch(/剩余\s+\d+\s+节/)
-
-      const bookButton = card.locator('button:has-text("预约课程")')
+      const bookButton = card.getByRole('button', { name: '预约课程' })
+      await expect(bookButton).toBeVisible()
       await expect(bookButton).toBeEnabled()
     })
 
