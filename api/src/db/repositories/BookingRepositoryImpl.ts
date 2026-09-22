@@ -319,8 +319,10 @@ export class BookingRepositoryImpl implements BookingRepository {
         throw new Error('Course not found or not active')
       }
 
+      // Step 3a: Lock student row (data-model.md §4.2 critical section)
+      // Must lock BEFORE reading reserved/remaining to prevent I5 violation
       const { rows: [student] } = await client.query(
-        `SELECT * FROM student WHERE id = $1 AND status = 'Active'`,
+        `SELECT * FROM student WHERE id = $1 AND status = 'Active' FOR UPDATE`,
         [targetStudentId]
       )
 
@@ -332,12 +334,14 @@ export class BookingRepositoryImpl implements BookingRepository {
       const startAt = new Date(data.startAt)
       const endAt = new Date(startAt.getTime() + course.duration_minutes * 60 * 1000)
 
-      // Step 5: Select package via FIFO
+      // Step 5: Select package via FIFO with row lock
+      // Lock packages to serialize FIFO selection under student critical section
       const { rows: packages } = await client.query(
         `SELECT id, created_at, remaining_sessions, status
          FROM lesson_package
          WHERE student_id = $1 AND course_id = $2 AND status = 'Active'
-         ORDER BY created_at ASC`,
+         ORDER BY created_at ASC
+         FOR UPDATE`,
         [targetStudentId, data.courseId]
       )
 

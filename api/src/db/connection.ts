@@ -12,6 +12,9 @@ export function getPool(): Pool {
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
+      // Force UTC timezone for all connections (data-model.md §0.4)
+      // Prevents ambient TZ from affecting timestamptz operations
+      options: '-c TimeZone=UTC',
     })
   }
   

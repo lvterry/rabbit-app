@@ -1,5 +1,9 @@
 -- Migration 001: Initial Schema
 -- Extensions, Roles, Core Tables
+--
+-- ⚠️ SECURITY WARNING: Passwords in this file (*_changeme) are for LOCAL DOCKER ONLY
+-- NEVER deploy these to production. Use environment-injected passwords or managed
+-- PostgreSQL services. See api/src/db/README.md for production setup guidance.
 
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
