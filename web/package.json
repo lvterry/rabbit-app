@@ -4,16 +4,23 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "echo 'Web dev server not yet implemented' && exit 0",
-    "build": "echo 'Web build not yet implemented' && exit 0",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "echo 'Web tests not yet implemented' && exit 0"
+    "test": "vitest"
   },
   "dependencies": {
-    "@rabbit/shared": "workspace:*"
+    "@rabbit/shared": "workspace:*",
+    "preact": "^10.19.3",
+    "preact-router": "^4.1.2",
+    "@preact/signals": "^1.2.2"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
-    "typescript": "^5.3.3"
+    "@preact/preset-vite": "^2.8.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.7",
+    "vitest": "^1.1.0"
   }
 }

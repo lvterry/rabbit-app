@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "code": "INVITE_CONSUMED",
+  "message": "该邀请已被使用，请联系老师重新发送。",
+  "retryable": false,
+  "details": null,
+  "requestId": "req_invite_consumed_foreign"
+}
