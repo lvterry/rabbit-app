@@ -59,9 +59,10 @@ export function createPackageRouter(deps: {
       throw new AppError(ErrorCode.FORBIDDEN, 'User does not have teacher capability')
     }
     
-    // P0 #4: Verify THIS package belongs to THIS teacher
+    // P0 #4: Verify THIS package belongs to THIS teacher (use repo for mock compatibility)
+    // Query package to get its teacher_id via SQL (internal field not exposed in view)
     const { rows } = await deps.pool.query(
-      `SELECT teacher_id, student_id FROM lesson_package WHERE id = $1`,
+      `SELECT teacher_id FROM lesson_package WHERE id = $1`,
       [req.params.packageId]
     )
     

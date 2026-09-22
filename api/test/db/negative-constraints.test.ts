@@ -153,16 +153,16 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
     const bookingId = bookingResult.rows[0].id
 
     await pool.query(
-      `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, start_at, end_at, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'Active')`,
-      [bookingId, teacherId, studentId, courseId, start, end]
+      `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, package_id, completed_at, status, source)
+       VALUES ($1, $2, $3, $4, $5, now(), 'Active', 'TeacherConfirmed')`,
+      [bookingId, teacherId, studentId, courseId, packageId]
     )
 
     await expect(
       pool.query(
-        `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, start_at, end_at, status)
-         VALUES ($1, $2, $3, $4, $5, $6, 'Active')`,
-        [bookingId, teacherId, studentId, courseId, start, end]
+        `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, package_id, completed_at, status, source)
+         VALUES ($1, $2, $3, $4, $5, now(), 'Active', 'TeacherConfirmed')`,
+        [bookingId, teacherId, studentId, courseId, packageId]
       )
     ).rejects.toThrow(/23505|session_one_active_per_booking/)
   })
@@ -177,19 +177,27 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
 
     const testPackageId = packageResult.rows[0].id
 
-    await expect(
-      pool.query(
+    // Test negative remaining_sessions (violates CHECK constraint)
+    try {
+      await pool.query(
         `UPDATE lesson_package SET remaining_sessions = -1 WHERE id = $1`,
         [testPackageId]
       )
-    ).rejects.toThrow(/23514|remaining_sessions/)
+      throw new Error('Should have rejected negative remaining_sessions')
+    } catch (err: any) {
+      expect(err.code).toBe('23514') // check_violation
+    }
 
-    await expect(
-      pool.query(
+    // Test remaining > purchased (violates CHECK constraint)
+    try {
+      await pool.query(
         `UPDATE lesson_package SET remaining_sessions = 11 WHERE id = $1`,
         [testPackageId]
       )
-    ).rejects.toThrow(/23514|remaining_sessions/)
+      throw new Error('Should have rejected remaining > purchased')
+    } catch (err: any) {
+      expect(err.code).toBe('23514') // check_violation
+    }
   })
 
   it('should reject UPDATE/DELETE on package_transaction (I4: append-only ledger)', async () => {
@@ -213,21 +221,29 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
 
     const txId = txResult.rows[0].id
 
-    // Now test that UPDATE is denied (migration 003 revokes UPDATE on package_transaction)
-    await expect(
-      pool.query(
-        `UPDATE package_transaction SET amount = 10 WHERE id = $1`,
-        [txId]
-      )
-    ).rejects.toThrow(/42501/)
+    // Switch to app_rw role to test permission denial (migration 003 revokes from app_rw)
+    await pool.query('SET ROLE app_rw')
 
-    // Test that DELETE is denied
-    await expect(
-      pool.query(
-        `DELETE FROM package_transaction WHERE id = $1`,
-        [txId]
-      )
-    ).rejects.toThrow(/42501/)
+    try {
+      // Now test that UPDATE is denied (migration 003 revokes UPDATE on package_transaction)
+      await expect(
+        pool.query(
+          `UPDATE package_transaction SET amount = 10 WHERE id = $1`,
+          [txId]
+        )
+      ).rejects.toThrow(/42501|permission denied/)
+
+      // Test that DELETE is denied
+      await expect(
+        pool.query(
+          `DELETE FROM package_transaction WHERE id = $1`,
+          [txId]
+        )
+      ).rejects.toThrow(/42501|permission denied/)
+    } finally {
+      // Reset role
+      await pool.query('RESET ROLE')
+    }
   })
 
   it('should allow multiple unbound students (I6: user_id partial unique)', async () => {
@@ -287,10 +303,10 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
     const booking2Id = booking2Result.rows[0].id
 
     const sessionResult = await pool.query(
-      `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, start_at, end_at, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'Active')
+      `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, package_id, completed_at, status, source)
+       VALUES ($1, $2, $3, $4, $5, now(), 'Active', 'TeacherConfirmed')
        RETURNING id`,
-      [booking2Id, teacherId, studentId, courseId, start, end]
+      [booking2Id, teacherId, studentId, courseId, packageId]
     )
 
     const sessionId = sessionResult.rows[0].id
@@ -319,17 +335,17 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
 
     // First complete: Create Active session
     const session1Result = await pool.query(
-      `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, start_at, end_at, status, source)
-       VALUES ($1, $2, $3, $4, $5, $6, 'Active', 'TeacherConfirmed')
+      `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, package_id, completed_at, status, source)
+       VALUES ($1, $2, $3, $4, $5, now(), 'Active', 'TeacherConfirmed')
        RETURNING id`,
-      [bookingId, teacherId, studentId, courseId, start, end]
+      [bookingId, teacherId, studentId, courseId, packageId]
     )
 
     const session1Id = session1Result.rows[0].id
 
-    // Undo: Void the first session
+    // Undo: Void the first session (note: voided_at not in schema, use status only)
     await pool.query(
-      `UPDATE lesson_session SET status = 'Voided', voided_at = now() WHERE id = $1`,
+      `UPDATE lesson_session SET status = 'Voided' WHERE id = $1`,
       [session1Id]
     )
 
@@ -337,9 +353,9 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
     // This should succeed (only partial unique index prevents duplicate Active)
     await expect(
       pool.query(
-        `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, start_at, end_at, status, source)
-         VALUES ($1, $2, $3, $4, $5, $6, 'Active', 'TeacherConfirmed')`,
-        [bookingId, teacherId, studentId, courseId, start, end]
+        `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, package_id, completed_at, status, source)
+         VALUES ($1, $2, $3, $4, $5, now(), 'Active', 'TeacherConfirmed')`,
+        [bookingId, teacherId, studentId, courseId, packageId]
       )
     ).resolves.toBeDefined()
 
