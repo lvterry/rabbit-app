@@ -658,21 +658,21 @@ export class BookingRepositoryImpl implements BookingRepository {
       const result = await this.findById(bookingId)
       
       // Write idempotency record with full response (after COMMIT)
-      // Use explicit JSON serialization to avoid "[object Object]" issues
-      const responseBody = JSON.stringify({ ok: true, data: result || { bookingId } })
+      // Column is JSONB, so pass the parsed object directly (not stringified)
+      const responseData = { ok: true, data: result || { bookingId } }
       try {
         await this.pool.query(
           `INSERT INTO idempotency_record (
             user_id, student_id, idempotency_key, endpoint,
             request_hash, response_status, response_body, state
-          ) VALUES ($1, $2, $3, $4, $5, 200, $6::jsonb, 'Succeeded')`,
+          ) VALUES ($1, $2, $3, $4, $5, 200, $6, 'Succeeded')`,
           [
             principal.userId,
             principal.studentId,
             idempotencyKey,
             finalEndpoint,
             finalRequestHash,
-            responseBody
+            responseData
           ]
         )
       } catch (idemError: any) {
