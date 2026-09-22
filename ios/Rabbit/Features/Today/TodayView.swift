@@ -28,8 +28,18 @@ struct TodayView: View {
                             
                             // Next booking card
                             if let next = day.next {
-                                NextBookingCard(booking: next)
-                                    .padding(.horizontal)
+                                NavigationLink {
+                                    BookingDetailView(
+                                        viewModel: BookingDetailViewModel(
+                                            bookingId: next.bookingId,
+                                            repo: environment.bookingRepository
+                                        )
+                                    )
+                                } label: {
+                                    NextBookingCard(booking: next)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal)
                             }
                             
                             // Pending actions section

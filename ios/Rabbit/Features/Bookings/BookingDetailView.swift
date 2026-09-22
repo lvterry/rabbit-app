@@ -147,10 +147,16 @@ struct BookingDetailView: View {
                         }
                     }
                     
-                    // Actions section - GATED ON booking.actions.*
-                    if booking.status == .Upcoming {
+                    // Actions section - GATED ONLY ON booking.actions.* (no status checks)
+                    let hasAnyAction = booking.actions.canComplete || 
+                                       booking.actions.canMarkNoShow || 
+                                       booking.actions.canReschedule || 
+                                       booking.actions.canCancel || 
+                                       booking.actions.canUndoComplete
+                    
+                    if hasAnyAction {
                         Section {
-                            // Complete action - gated on booking.actions.canComplete
+                            // Complete - show ONLY if booking.actions.canComplete
                             if booking.actions.canComplete {
                                 Button {
                                     Task {
@@ -162,7 +168,7 @@ struct BookingDetailView: View {
                                 .disabled(viewModel.isProcessing)
                             }
                             
-                            // Mark no-show - gated on booking.actions.canMarkNoShow
+                            // Mark no-show - show ONLY if booking.actions.canMarkNoShow
                             if booking.actions.canMarkNoShow {
                                 Button {
                                     Task {
@@ -174,17 +180,18 @@ struct BookingDetailView: View {
                                 .disabled(viewModel.isProcessing)
                             }
                             
-                            // Reschedule - gated on booking.actions.canReschedule
+                            // Reschedule - show ONLY if booking.actions.canReschedule
                             if booking.actions.canReschedule {
                                 Button {
-                                    // TODO: Open reschedule flow
+                                    // TODO: Reschedule flow - needs date/time picker + POST /bookings/:id/reschedule
+                                    // Server will validate reschedule limits and policies
                                 } label: {
                                     Label("改期", systemImage: "arrow.right.circle")
                                 }
                                 .disabled(viewModel.isProcessing)
                             }
                             
-                            // Cancel - gated on booking.actions.canCancel
+                            // Cancel - show ONLY if booking.actions.canCancel
                             if booking.actions.canCancel {
                                 Button(role: .destructive) {
                                     showCancelConfirm = true
@@ -193,11 +200,9 @@ struct BookingDetailView: View {
                                 }
                                 .disabled(viewModel.isProcessing)
                             }
-                        }
-                    } else if booking.status == .Completed {
-                        // Undo completion - gated on booking.actions.canUndoComplete
-                        if booking.actions.canUndoComplete {
-                            Section {
+                            
+                            // Undo completion - show ONLY if booking.actions.canUndoComplete
+                            if booking.actions.canUndoComplete {
                                 Button {
                                     showUndoConfirm = true
                                 } label: {
