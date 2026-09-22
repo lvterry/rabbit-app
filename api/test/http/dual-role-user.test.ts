@@ -29,13 +29,21 @@ describe('Real HTTP - Dual-Role User', () => {
           : null,
     } as any
 
+    const mockBookingRepo = {
+      getTeacherDayView: async (teacherId: string, date: string) => ({
+        date,
+        bookings: [],
+        pendingCount: 0
+      } as any),
+    } as any
+
     app = createTestApp({
       teacherRepo: mockTeacherRepo,
       courseRepo: {} as any,
       studentRepo: mockStudentRepo,
       availabilityRepo: {} as any,
       packageRepo: {} as any,
-      bookingRepo: {} as any,
+      bookingRepo: mockBookingRepo,
       idempotencyRepo: {} as any,
       pool: createMockPool(),
     })

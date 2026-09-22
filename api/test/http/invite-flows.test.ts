@@ -64,6 +64,9 @@ describe('Real HTTP - Invite Flows', () => {
       listByTeacher: async () => [
         { courseId: 'course-1', name: '钢琴课' },
       ],
+      listActiveByTeacher: async () => [
+        { courseId: 'course-1', name: '钢琴课' },
+      ],
     } as any
 
     app = createTestApp({

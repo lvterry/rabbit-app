@@ -60,7 +60,7 @@ describe('Real HTTP - Booking studentId Rules', () => {
         startAt: '2026-09-25T10:00:00Z',
         // studentId missing!
       })
-      .expect(400)
+      .expect(422)
 
     expect(response.body.ok).toBe(false)
     expect(response.body.code).toBe('VALIDATION_FAILED')
@@ -78,7 +78,7 @@ describe('Real HTTP - Booking studentId Rules', () => {
         startAt: '2026-09-25T10:00:00Z',
         studentId: 'student-123', // Forbidden!
       })
-      .expect(400)
+      .expect(422)
 
     expect(response.body.ok).toBe(false)
     expect(response.body.code).toBe('VALIDATION_FAILED')
@@ -98,7 +98,7 @@ describe('Real HTTP - Booking studentId Rules', () => {
         startAt: '2026-09-25T10:00:00Z',
         source: 'TeacherCreated', // Forbidden!
       })
-      .expect(400)
+      .expect(422)
 
     expect(response.body.code).toBe('VALIDATION_FAILED')
   })
@@ -116,7 +116,7 @@ describe('Real HTTP - Booking studentId Rules', () => {
         startAt: '2026-09-25T10:00:00Z',
         by: 'Teacher', // Forbidden!
       })
-      .expect(400)
+      .expect(422)
 
     expect(response.body.code).toBe('VALIDATION_FAILED')
   })
@@ -134,7 +134,7 @@ describe('Real HTTP - Booking studentId Rules', () => {
         startAt: '2026-09-25T10:00:00Z',
         asTeacher: true, // Forbidden!
       })
-      .expect(400)
+      .expect(422)
 
     expect(response.body.code).toBe('VALIDATION_FAILED')
   })

@@ -14,41 +14,81 @@ import { createHash } from 'crypto'
 
 describe('Real HTTP - Idempotency', () => {
   let app: any
-  let requestHistory: Map<string, { hash: string; endpoint: string; response: any }>
+  let requestHistory: Map<string, { hash: string; status: number; body: string; endpoint: string }>
+  let bookingCounter: number
 
   beforeEach(() => {
     requestHistory = new Map()
+    bookingCounter = 0
 
     const mockTeacherRepo = {
       findByUserId: async () => ({ teacherId: 'teacher-1' } as any),
       hasTeacherCapability: async () => true,
     } as any
 
-    const mockBookingRepo = {
-      create: async (data: any) => ({
-        bookingId: `booking-${Date.now()}`,
-        ...data,
-      }),
-    } as any
-
     const mockIdempotencyRepo = {
       findExisting: async (principal: any, endpoint: string, key: string) => {
-        const record = requestHistory.get(`${principal.userId}-${key}`)
-        if (record && record.endpoint === endpoint) {
+        const principalKey = principal.userId || principal.studentId
+        const recordKey = `${principalKey}-${endpoint}-${key}`
+        const record = requestHistory.get(recordKey)
+        if (record) {
           return {
             requestHash: record.hash,
-            responseStatus: 200,
-            responseBody: JSON.stringify(record.response),
+            responseStatus: record.status,
+            responseBody: record.body,
           }
         }
         return null
       },
-      recordSuccess: async (principal: any, endpoint: string, key: string, hash: string, status: number, body: any) => {
-        requestHistory.set(`${principal.userId}-${key}`, {
+      recordSuccess: async (principal: any, endpoint: string, key: string, hash: string, status: number, body: string) => {
+        const principalKey = principal.userId || principal.studentId
+        const recordKey = `${principalKey}-${endpoint}-${key}`
+        
+        // Simulate 23505 unique constraint violation if record already exists
+        const existing = requestHistory.get(recordKey)
+        if (existing) {
+          const error: any = new Error('duplicate key value violates unique constraint')
+          error.code = '23505'
+          throw error
+        }
+        
+        requestHistory.set(recordKey, {
           hash,
+          status,
+          body,
           endpoint,
-          response: JSON.parse(body),
         })
+      },
+    } as any
+
+    const mockBookingRepo = {
+      create: async (data: any, principal: any, idempotencyKey: string) => {
+        const booking = {
+          bookingId: `booking-${++bookingCounter}`,
+          ...data,
+        }
+        
+        // Agent A pattern: record idempotency in same "transaction"
+        // Compute hash matching middleware's logic
+        const endpoint = 'POST /v1/bookings'
+        const requestHash = createHash('sha256').update(JSON.stringify({
+          method: 'POST',
+          path: '/v1/bookings',
+          body: data,
+        })).digest('hex')
+        
+        const responseBody = JSON.stringify({ ok: true, data: { booking, bookingId: booking.bookingId } })
+        
+        await mockIdempotencyRepo.recordSuccess(
+          principal,
+          endpoint,
+          idempotencyKey,
+          requestHash,
+          200,
+          responseBody
+        )
+        
+        return booking
       },
     } as any
 
@@ -78,11 +118,7 @@ describe('Real HTTP - Idempotency', () => {
         courseId: 'course-123',
         startAt: '2026-09-25T10:00:00Z',
       })
-
-    if (response1.status !== 200) {
-      console.error('First request failed:', response1.status, response1.body)
-    }
-    expect(response1.status).toBe(200)
+      .expect(200)
 
     const bookingId1 = response1.body.data.bookingId
 
@@ -102,6 +138,7 @@ describe('Real HTTP - Idempotency', () => {
 
     // Should return SAME booking (replay)
     expect(bookingId2).toBe(bookingId1)
+    expect(bookingCounter).toBe(1) // Only one booking created
   })
 
   it('Key reuse: same key + different request returns IDEMPOTENCY_KEY_REUSED', async () => {
@@ -134,5 +171,6 @@ describe('Real HTTP - Idempotency', () => {
 
     expect(response2.body.ok).toBe(false)
     expect(response2.body.code).toBe('IDEMPOTENCY_KEY_REUSED')
+    expect(bookingCounter).toBe(1) // Only first booking created
   })
 })

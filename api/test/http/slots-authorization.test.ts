@@ -17,10 +17,15 @@ describe('Real HTTP - Slots Authorization', () => {
 
   beforeEach(() => {
     const mockTeacherRepo = {
-      findById: async (id: string) => 
-        id === 'teacher-1' 
-          ? { teacherId: 'teacher-1', name: '张老师', timezone: 'Asia/Shanghai', minLeadHours: 24, maxAdvanceDays: 30, slotStepMinutes: 30 } as any
-          : null,
+      findById: async (id: string) => {
+        if (id === 'teacher-1') {
+          return { teacherId: 'teacher-1', name: '张老师', timezone: 'Asia/Shanghai', minLeadHours: 24, maxAdvanceDays: 30, slotStepMinutes: 30 } as any
+        }
+        if (id === 'teacher-999') {
+          return { teacherId: 'teacher-999', name: '其他老师', timezone: 'Asia/Shanghai', minLeadHours: 24, maxAdvanceDays: 30, slotStepMinutes: 30 } as any
+        }
+        return null
+      },
       findByUserId: async (userId: string) => 
         userId === 'user-teacher-1' 
           ? { teacherId: 'teacher-1', name: '张老师' } as any
