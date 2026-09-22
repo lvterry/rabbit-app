@@ -34,6 +34,7 @@ struct MainTabView: View {
                     Label("我的", systemImage: "person.circle")
                 }
         }
+        .tint(.brandGreen)
         .onAppear {
             if todayViewModel == nil {
                 todayViewModel = TodayViewModel(repo: environment.bookingRepository)

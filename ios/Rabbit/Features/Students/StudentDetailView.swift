@@ -8,6 +8,7 @@ struct StudentDetailView: View {
     @State private var showAddPackage = false
     @State private var showAddBooking = false
     @State private var showInvite = false
+    @State private var showAdjustPackage: Package?
     
     var body: some View {
         List {
@@ -115,33 +116,54 @@ struct StudentDetailView: View {
                 if !detail.packages.isEmpty {
                     Section("课时包") {
                         ForEach(detail.packages) { package in
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
+                            HStack {
+                                VStack(alignment: .leading, spacing: Spacing.sm) {
                                     Text(package.courseName)
-                                        .font(.headline)
+                                        .font(.body)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.inkPrimary)
                                     
-                                    Spacer()
-                                    
-                                    Text(package.status.rawValue)
-                                        .font(.caption)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(package.status == .Active ? Color.green.opacity(0.2) : Color.gray.opacity(0.2))
-                                        .cornerRadius(4)
-                                }
-                                
-                                HStack {
-                                    Text("\(package.remainingSessions) / \(package.purchasedSessions)")
-                                        .font(.subheadline)
-                                    
-                                    Spacer()
+                                    HStack(spacing: Spacing.xs) {
+                                        Text("\(package.remainingSessions)")
+                                            .font(.title3)
+                                            .fontWeight(.bold)
+                                            .monospacedDigit()
+                                            .foregroundColor(.brandGreen)
+                                        
+                                        Text("/")
+                                            .foregroundColor(.inkTertiary)
+                                        
+                                        Text("\(package.purchasedSessions)")
+                                            .font(.body)
+                                            .monospacedDigit()
+                                            .foregroundColor(.inkSecondary)
+                                        
+                                        Text("节")
+                                            .font(.caption)
+                                            .foregroundColor(.inkSecondary)
+                                    }
                                     
                                     Text(package.createdDate)
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(Color.inkTertiary)
+                                }
+                                
+                                Spacer()
+                                
+                                VStack(alignment: .trailing, spacing: Spacing.xs) {
+                                    PackageStatusBadge(status: package.status)
+                                    
+                                    Button {
+                                        showAdjustPackage = package
+                                    } label: {
+                                        Text("调整")
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.brandGreen)
+                                    }
                                 }
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, Spacing.sm)
                         }
                     }
                 }
@@ -219,6 +241,8 @@ struct StudentDetailView: View {
         }
         .navigationTitle("学员详情")
         .navigationBarTitleDisplayMode(.inline)
+        .scrollContentBackground(.hidden)
+        .background(Color.bgApp)
         .refreshable {
             await viewModel.refresh()
         }
@@ -234,6 +258,16 @@ struct StudentDetailView: View {
             if let invite = viewModel.detail?.invite {
                 InviteSheetView(invite: invite)
             }
+        }
+        .sheet(item: $showAdjustPackage) { package in
+            AdjustPackageView(
+                viewModel: AdjustPackageViewModel(
+                    packageId: package.packageId,
+                    purchased: package.purchasedSessions,
+                    remaining: package.remainingSessions,
+                    repo: environment.packageRepository
+                )
+            )
         }
         .task {
             if viewModel.detail == nil {
