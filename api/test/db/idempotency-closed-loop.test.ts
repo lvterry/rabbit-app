@@ -197,8 +197,8 @@ describe('Idempotency Closed Loop', () => {
       expect(existing.request_hash).toBe(requestHash)
       expect(existing.response_status).toBe(200)
       
-      const responseBody = JSON.parse(existing.response_body)
-      expect(responseBody.data.bookingId).toBe('booking-123')
+      // response_body is JSONB, already parsed
+      expect(existing.response_body.data.bookingId).toBe('booking-123')
 
       await client.query('COMMIT')
     } finally {
