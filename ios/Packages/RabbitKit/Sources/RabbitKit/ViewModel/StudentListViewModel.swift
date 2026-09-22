@@ -13,10 +13,14 @@ public final class StudentListViewModel {
     
     public var searchQuery: String = ""
     
-    private let repo: any StudentRepositoryProtocol
+    public let studentRepo: any StudentRepositoryProtocol
     
     public init(repo: any StudentRepositoryProtocol) {
-        self.repo = repo
+        self.studentRepo = repo
+    }
+    
+    private var repo: any StudentRepositoryProtocol {
+        studentRepo
     }
     
     public func refresh() async {

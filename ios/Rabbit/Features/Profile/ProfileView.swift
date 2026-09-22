@@ -45,21 +45,23 @@ struct ProfileView: View {
                 // Management section
                 Section("管理") {
                     NavigationLink {
-                        // TODO: Course management
-                        Text("课程管理")
+                        CourseManagementView(viewModel: CourseListViewModel(
+                            repo: CourseRepository(client: HTTPClient(baseURL: URL(string: ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:8787")!))
+                        ))
                     } label: {
                         Label("课程管理", systemImage: "book")
                     }
                     
                     NavigationLink {
-                        // TODO: Availability
-                        Text("开放时间")
+                        AvailabilityManagementView(viewModel: AvailabilityViewModel(
+                            repo: AvailabilityRepository(client: HTTPClient(baseURL: URL(string: ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:8787")!))
+                        ))
                     } label: {
                         Label("开放时间", systemImage: "clock")
                     }
                     
                     NavigationLink {
-                        // TODO: Rules
+                        // TODO: Rules view
                         Text("预约规则")
                     } label: {
                         Label("预约规则", systemImage: "slider.horizontal.3")

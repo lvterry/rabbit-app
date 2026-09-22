@@ -3,6 +3,7 @@ import RabbitKit
 
 struct TodayView: View {
     @Bindable var viewModel: TodayViewModel
+    @State private var showAddBooking = false
     
     var body: some View {
         NavigationStack {
@@ -111,11 +112,17 @@ struct TodayView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        // TODO: Quick add booking
+                        showAddBooking = true
                     } label: {
                         Image(systemName: "plus")
                     }
                 }
+            }
+            .sheet(isPresented: $showAddBooking) {
+                AddBookingView(viewModel: AddBookingViewModel(
+                    studentRepo: StudentRepository(client: HTTPClient(baseURL: URL(string: ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:8787")!)),
+                    bookingRepo: viewModel.repo as! BookingRepository
+                ))
             }
         }
         .task {

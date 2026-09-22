@@ -40,8 +40,12 @@ struct StudentListView: View {
                         Section {
                             ForEach(viewModel.students) { student in
                                 NavigationLink {
-                                    // TODO: Student detail view
-                                    Text("学员详情: \(student.name)")
+                                    StudentDetailView(
+                                        viewModel: StudentDetailViewModel(
+                                            studentId: student.studentId,
+                                            studentRepo: viewModel.studentRepo
+                                        )
+                                    )
                                 } label: {
                                     StudentListRow(student: student)
                                 }
@@ -65,8 +69,10 @@ struct StudentListView: View {
                 }
             }
             .sheet(isPresented: $showAddStudent) {
-                // TODO: Add student view
-                Text("添加学员")
+                AddStudentView(viewModel: AddStudentViewModel(
+                    studentRepo: viewModel.studentRepo,
+                    courseRepo: CourseRepository(client: HTTPClient(baseURL: URL(string: ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:8787")!))
+                ))
             }
         }
         .task {
