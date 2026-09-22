@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "data": {
+    "teacher": {
+      "teacherId": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "王老师",
+      "avatarUrl": null
+    },
+    "studentName": "李同学",
+    "courses": [
+      {
+        "courseId": "750e8400-e29b-41d4-a716-446655440001",
+        "courseName": "西班牙语一对一",
+        "remaining": 8
+      }
+    ],
+    "expiresAt": "2026-03-01T00:00:00Z"
+  },
+  "meta": {
+    "generatedAt": "2026-02-20T02:11:00Z",
+    "requestId": "req_invite_pending"
+  }
+}

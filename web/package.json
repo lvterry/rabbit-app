@@ -1,0 +1,19 @@
+{
+  "name": "@rabbit/web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Web dev server not yet implemented' && exit 0",
+    "build": "echo 'Web build not yet implemented' && exit 0",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'Web tests not yet implemented' && exit 0"
+  },
+  "dependencies": {
+    "@rabbit/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  }
+}
