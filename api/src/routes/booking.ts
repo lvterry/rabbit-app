@@ -49,8 +49,12 @@ export function createBookingRouter(deps: {
 
     // Debug logging for tests
     if (!principal || !principal.kind) {
-      console.error('[Booking] Invalid principal:', principal)
+      console.error('[Booking POST] Invalid principal:', JSON.stringify(principal))
       throw new AppError(ErrorCode.INTERNAL, 'Principal not set correctly')
+    }
+    if (principal.kind === 'User' && !principal.userId) {
+      console.error('[Booking POST] User principal missing userId:', JSON.stringify(principal))
+      throw new AppError(ErrorCode.INTERNAL, 'User principal missing userId')
     }
 
     // Reject forbidden identity fields (parallel-plan-v2.md §19)

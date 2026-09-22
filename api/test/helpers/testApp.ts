@@ -44,11 +44,14 @@ export function createTestApp(repos: {
   app.use(cookieParser())
   app.use(requestIdMiddleware)
 
-  // Idempotency middleware (before routes)
+  // Auth middleware MUST run before idempotency (idempotency needs req.principal)
+  app.use(authMiddleware)
+
+  // Idempotency middleware (after auth, before routes)
   app.use(createIdempotencyMiddleware(repos.idempotencyRepo))
 
-  // API routes (authMiddleware is inside createApiRouter)
-  app.use('/v1', authMiddleware, createApiRouter(repos))
+  // API routes
+  app.use('/v1', createApiRouter(repos))
 
   // Error handler (with idempotency support for 23505 handling)
   app.use(createErrorHandler(repos.idempotencyRepo))
