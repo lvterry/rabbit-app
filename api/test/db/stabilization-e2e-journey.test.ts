@@ -360,9 +360,9 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
   it('5. Teacher reschedules booking 2 (free reschedule, reserve-only)', async () => {
     const booking2Id = (global as any).booking2Id
 
-    // New time (200h from now - far enough to avoid any slot conflicts)
+    // New time (600h from now - must be after the 500h/548h bookings)
     const now = new Date()
-    const newStart = new Date(now.getTime() + 200 * 3600 * 1000)
+    const newStart = new Date(now.getTime() + 600 * 3600 * 1000)
     newStart.setMinutes(Math.ceil(newStart.getMinutes() / 30) * 30, 0, 0)
 
     const res = await request
