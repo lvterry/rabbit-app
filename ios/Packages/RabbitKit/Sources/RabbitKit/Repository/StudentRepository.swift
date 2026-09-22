@@ -28,12 +28,118 @@ public actor StudentRepository: StudentRepositoryProtocol {
         if let status = status {
             queryItems.append(URLQueryItem(name: "status", value: status.rawValue))
         }
-        
-        return try await client.get(.students, queryItems: queryItems)
+
+        // Contract (impl-guide): `{ students, stats }`.
+        // Live API currently returns `{ items: [...], hasMore }` — map until Maya aligns.
+        struct StudentsWire: Decodable {
+            let students: [StudentSummary]?
+            let stats: StudentStats?
+            let items: [Item]?
+            let hasMore: Bool?
+
+            struct Item: Decodable {
+                let student: StudentCore
+                let courses: [CourseCore]?
+                let upcoming: [Booking]?
+
+                struct StudentCore: Decodable {
+                    let studentId: String
+                    let name: String
+                    let contact: String?
+                    let status: StudentStatus
+                    let bound: Bool
+                    let boundAt: String?
+                }
+
+                struct CourseCore: Decodable {
+                    let courseId: String
+                    let courseName: String
+                    let remaining: Int
+                    let reserved: Int
+                    let available: Int
+                }
+            }
+        }
+
+        let wire: StudentsWire = try await client.get(.students, queryItems: queryItems)
+        if let students = wire.students, let stats = wire.stats {
+            return StudentListView(students: students, stats: stats)
+        }
+
+        let details = wire.items ?? []
+        let summaries: [StudentSummary] = details.map { item in
+            let courseSummaries = (item.courses ?? []).map {
+                CourseSummary(
+                    courseId: $0.courseId,
+                    courseName: $0.courseName,
+                    remaining: $0.remaining,
+                    reserved: $0.reserved,
+                    available: $0.available
+                )
+            }
+            return StudentSummary(
+                studentId: item.student.studentId,
+                name: item.student.name,
+                contact: item.student.contact,
+                status: item.student.status,
+                bound: item.student.bound,
+                boundAt: item.student.boundAt,
+                courseSummaries: courseSummaries,
+                remainingTotal: courseSummaries.reduce(0) { $0 + $1.remaining },
+                nextBooking: item.upcoming?.first
+            )
+        }
+        let stats = StudentStats(
+            total: summaries.count,
+            unbound: summaries.filter { !$0.bound }.count,
+            active: summaries.filter { $0.status == .Active }.count
+        )
+        return StudentListView(students: summaries, stats: stats)
     }
-    
+
     public func studentDetail(id: String) async throws -> StudentDetailView {
-        return try await client.get(.student(id))
+        // Contract: full StudentDetailView from GET /v1/students/:id.
+        // Live API returns `{ student }` only; list items omit upcoming.
+        // Fill upcoming from teacher-upcoming until Maya aligns.
+        struct ListWire: Decodable {
+            let items: [StudentDetailView]?
+        }
+        struct UpcomingWire: Decodable {
+            let items: [Booking]
+        }
+
+        let list: ListWire = try await client.get(.students)
+        let base: StudentDetailView
+        if let match = list.items?.first(where: { $0.student.studentId == id }) {
+            base = match
+        } else {
+            struct Partial: Decodable { let student: Student }
+            let partial: Partial = try await client.get(.student(id))
+            base = StudentDetailView(
+                student: partial.student,
+                courses: [],
+                packages: [],
+                transactions: [],
+                upcoming: [],
+                history: [],
+                invite: nil
+            )
+        }
+
+        let upcoming: UpcomingWire = try await client.get(
+            .teacherUpcoming,
+            queryItems: [URLQueryItem(name: "limit", value: "50")]
+        )
+        let mine = upcoming.items.filter { $0.studentId == id && $0.status == .Upcoming }
+        return StudentDetailView(
+            student: base.student,
+            courses: base.courses,
+            packages: base.packages,
+            transactions: base.transactions,
+            upcoming: mine.isEmpty ? base.upcoming : mine,
+            history: base.history,
+            invite: base.invite
+        )
     }
     
     public func createStudent(

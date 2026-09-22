@@ -13,6 +13,22 @@ public struct Invite: Codable, Identifiable {
     public let status: InviteStatus?
     
     public var id: String { inviteId }
+
+    enum CodingKeys: String, CodingKey {
+        case inviteId, token, url, expiresAt, expiresLabel, studentName, status
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        inviteId = try c.decode(String.self, forKey: .inviteId)
+        token = try c.decode(String.self, forKey: .token)
+        url = try c.decodeIfPresent(String.self, forKey: .url) ?? ""
+        expiresAt = try c.decode(String.self, forKey: .expiresAt)
+        // Live list/detail invites omit expiresLabel; contract includes it.
+        expiresLabel = try c.decodeIfPresent(String.self, forKey: .expiresLabel) ?? ""
+        studentName = try c.decodeIfPresent(String.self, forKey: .studentName) ?? ""
+        status = try c.decodeIfPresent(InviteStatus.self, forKey: .status)
+    }
 }
 
 public enum InviteStatus: String, Codable {

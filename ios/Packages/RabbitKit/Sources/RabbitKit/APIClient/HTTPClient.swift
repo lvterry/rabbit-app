@@ -179,6 +179,7 @@ extension Endpoint {
     // Today & Calendar
     public static let teacherDay = Endpoint("v1/me/teacher-day")
     public static let teacherCalendar = Endpoint("v1/me/teacher-calendar")
+    public static let teacherUpcoming = Endpoint("v1/me/teacher-upcoming")
     
     // Students
     public static let students = Endpoint("v1/students")

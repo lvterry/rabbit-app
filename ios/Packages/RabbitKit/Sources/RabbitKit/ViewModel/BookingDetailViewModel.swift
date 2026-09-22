@@ -14,9 +14,10 @@ public final class BookingDetailViewModel {
     private let bookingId: String
     private let repo: any BookingRepositoryProtocol
     
-    public init(bookingId: String, repo: any BookingRepositoryProtocol) {
+    public init(bookingId: String, repo: any BookingRepositoryProtocol, initialBooking: Booking? = nil) {
         self.bookingId = bookingId
         self.repo = repo
+        self.booking = initialBooking
     }
     
     public func refresh() async {
