@@ -15,6 +15,7 @@ import type {
   IdempotencyRepository,
 } from '../ports'
 import { createAuthRouter } from './auth'
+import { createSessionRouter } from './session'
 import { createInviteRouter } from './invite'
 import { createBookingRouter } from './booking'
 import { createSlotsRouter } from './slots'
@@ -45,7 +46,14 @@ export function createApiRouter(deps: RouteDependencies): Router {
   const router = Router()
 
   // Mount route modules (Phase 0-2)
+  
+  // Auth routes (login, refresh) - under /auth
   router.use('/auth', createAuthRouter(deps))
+  
+  // Session metadata routes - at root level (NOT under /auth)
+  router.use('/', createSessionRouter(deps))
+  
+  // Business routes
   router.use('/invites', createInviteRouter(deps))
   router.use('/bookings', createBookingRouter(deps))
   router.use('/teachers', createSlotsRouter(deps))
@@ -53,7 +61,7 @@ export function createApiRouter(deps: RouteDependencies): Router {
   router.use('/students', createStudentRouter(deps))
   router.use('/courses', createCourseRouter(deps))
   router.use('/availability', createAvailabilityRouter(deps))
-  router.use('/packages', createPackageRouter(deps))
+  router.use('/students', createPackageRouter(deps))
   router.use('/me/devices', createDeviceRouter(deps.pool))
 
   return router

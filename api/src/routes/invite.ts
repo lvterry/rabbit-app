@@ -199,6 +199,7 @@ export function createInviteRouter(deps: {
 
     const teacher = await deps.teacherRepo.findById(result.teacherId)
 
+    // Response: accessToken in JSON body, refreshToken ONLY in HttpOnly cookie
     res.json(
       createSuccessEnvelope(
         {
@@ -208,8 +209,8 @@ export function createInviteRouter(deps: {
           studentId: result.studentId,
           studentName: invite.studentName,
           redirectTo: '/',
-          accessToken,
-          refreshToken,
+          accessToken, // Short-lived token for immediate use (iOS/Web)
+          // refreshToken: EXCLUDED - HttpOnly cookie only (Web long credential)
         },
         req.requestId
       )

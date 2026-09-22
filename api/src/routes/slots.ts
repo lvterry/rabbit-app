@@ -15,6 +15,7 @@ import { Router } from 'express'
 import type {
   TeacherRepository,
   CourseRepository,
+  StudentRepository,
   AvailabilityRepository,
   BookingRepository,
   PackageRepository,
@@ -27,6 +28,7 @@ import { computeSlots, computeBookableDays } from '../domain/slot'
 export function createSlotsRouter(deps: {
   teacherRepo: TeacherRepository
   courseRepo: CourseRepository
+  studentRepo: StudentRepository
   availabilityRepo: AvailabilityRepository
   bookingRepo: BookingRepository
   packageRepo: PackageRepository
@@ -61,10 +63,27 @@ export function createSlotsRouter(deps: {
     }
 
     // Derive view from capability (never trust client)
-    const hasTeacherCapability =
-      principal.kind === 'User' &&
-      principal.userId !== null &&
-      (await deps.teacherRepo.hasTeacherCapability(principal.userId))
+    // Teacher view: User must own this teacherId
+    let hasTeacherCapability = false
+    if (principal.kind === 'User' && principal.userId) {
+      const userTeacher = await deps.teacherRepo.findByUserId(principal.userId)
+      hasTeacherCapability = userTeacher !== null && userTeacher.teacherId === teacherId
+    }
+
+    // Student view: Must be bound to this teacher
+    let hasStudentCapability = false
+    if (principal.kind === 'Student') {
+      hasStudentCapability = principal.teacherId === teacherId
+    } else if (principal.kind === 'User' && principal.userId) {
+      // Check if user has student binding to this teacher
+      const student = await deps.studentRepo.findByTeacherAndUser(teacherId, principal.userId)
+      hasStudentCapability = student !== null
+    }
+
+    // Authorization: must have either teacher OR student capability for this teacher
+    if (!hasTeacherCapability && !hasStudentCapability) {
+      throw new AppError(ErrorCode.FORBIDDEN, 'Cannot access this teacher\'s slots')
+    }
 
     const view = hasTeacherCapability ? 'teacher' : 'student'
 
@@ -182,11 +201,24 @@ export function createSlotsRouter(deps: {
       throw new AppError(ErrorCode.VALIDATION_FAILED, 'Course not found')
     }
 
-    // Derive view from capability
-    const hasTeacherCapability =
-      principal.kind === 'User' &&
-      principal.userId !== null &&
-      (await deps.teacherRepo.hasTeacherCapability(principal.userId))
+    // Derive view and enforce authorization (same as slots endpoint)
+    let hasTeacherCapability = false
+    if (principal.kind === 'User' && principal.userId) {
+      const userTeacher = await deps.teacherRepo.findByUserId(principal.userId)
+      hasTeacherCapability = userTeacher !== null && userTeacher.teacherId === teacherId
+    }
+
+    let hasStudentCapability = false
+    if (principal.kind === 'Student') {
+      hasStudentCapability = principal.teacherId === teacherId
+    } else if (principal.kind === 'User' && principal.userId) {
+      const student = await deps.studentRepo.findByTeacherAndUser(teacherId, principal.userId)
+      hasStudentCapability = student !== null
+    }
+
+    if (!hasTeacherCapability && !hasStudentCapability) {
+      throw new AppError(ErrorCode.FORBIDDEN, 'Cannot access this teacher\'s availability')
+    }
 
     const view = hasTeacherCapability ? 'teacher' : 'student'
 

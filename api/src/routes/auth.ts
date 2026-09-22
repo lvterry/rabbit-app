@@ -36,40 +36,27 @@ export function createAuthRouter(deps: {
    * POST /v1/auth/apple
    * 
    * Sign in with Apple for iOS teacher app
-   * Returns userId, tokens, and teacher/student info
+   * 
+   * STUB: Not implemented - hard fail with 501
+   * Production requirements:
+   * - Verify identityToken with Apple's public keys
+   * - Extract sub (Apple user ID) from JWT
+   * - Create or find user by apple_id
+   * - Issue real User session tokens
    */
   router.post('/apple', async (req, res) => {
-    const { identityToken, authorizationCode, fullName } = req.body
-
-    // TODO: Verify Apple identity token with Apple servers
-    // For MVP, assume token is valid and extract user info
-    // In production, must verify with Apple's public keys
-
-    // Mock user ID extraction - replace with actual Apple token verification
-    const userId = 'mock-user-id' // Extract from verified token
-
-    // Check if user has teacher profile
-    const teacher = await deps.teacherRepo.findByUserId(userId)
-
-    // Check if user is bound to any students
-    const students: any[] = [] // TODO: Query students bound to this user
-
-    const accessToken = generateUserAccessToken(userId)
-    const refreshToken = generateUserRefreshToken(userId)
-
-    res.json(
-      createSuccessEnvelope(
-        {
-          userId,
-          isTeacher: teacher !== null,
-          teacher,
-          students,
-          accessToken,
-          refreshToken,
-        },
-        req.requestId
-      )
-    )
+    // Hard fail with 501 Not Implemented - no silent mock success
+    res.status(501).json({
+      ok: false,
+      code: 'NOT_IMPLEMENTED',
+      message: 'Apple Sign In not yet implemented',
+      retryable: false,
+      details: {
+        feature: 'apple-signin-ios',
+        requiresImplementation: true,
+      },
+      requestId: req.requestId,
+    })
   })
 
   /**

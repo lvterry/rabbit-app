@@ -73,37 +73,43 @@ export function createInviteTokenPrincipal(
  * Check if Principal can act as a specific teacher
  * 
  * Authority: auth-model.md §2
- * Teacher is a capability derived from data, not an identity type
+ * MUST enforce teacherId scope - fail closed
+ * 
+ * NOTE: This is a preliminary check. Routes MUST additionally verify
+ * teacher ownership via teacherRepo.findByUserId() or teacherRepo.findById()
+ * before granting access to teacher resources.
  */
 export function canActAsTeacher(principal: Principal, teacherId: string): boolean {
-  // Only User principals can be teachers
-  // Teacher capability is validated by checking teacher_profile(user_id, id)
-  // This check is done at the repository layer
-  return principal.kind === 'User' && principal.userId !== null
+  // Only User principals can potentially be teachers
+  // But we cannot verify teacherId ownership without DB query
+  // Fail closed: return false, routes MUST verify via repository
+  return false
 }
 
 /**
  * Check if Principal can act as a specific student
  * 
  * Authority: auth-model.md §2
- * Two paths:
- * 1. Student session: studentId + teacherId must match
- * 2. User session: student.user_id must equal principal.userId
+ * MUST enforce student binding - fail closed
+ * 
+ * Student principal: exact match on studentId + teacherId
+ * User principal: CANNOT verify without DB - routes MUST check binding
  */
 export function canActAsStudent(
   principal: Principal,
   targetStudentId: string,
   targetTeacherId: string
 ): boolean {
-  // Path 1: Student session (anonymous or pre-upgrade)
+  // Path 1: Student session - exact match required
   if (principal.kind === 'Student') {
     return principal.studentId === targetStudentId && principal.teacherId === targetTeacherId
   }
 
-  // Path 2: User session (account-upgraded student)
-  // Actual user_id match is validated at repository layer
+  // Path 2: User session - CANNOT verify binding without DB query
+  // Routes MUST call studentRepo.findByTeacherAndUser() to verify
+  // Fail closed: return false, delegate to route handler
   if (principal.kind === 'User') {
-    return true // Delegate to repository check
+    return false
   }
 
   return false

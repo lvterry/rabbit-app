@@ -18,7 +18,7 @@
  */
 
 import { Router } from 'express'
-import type { BookingRepository, TeacherRepository, IdempotencyRepository } from '../ports'
+import type { BookingRepository, TeacherRepository, StudentRepository, IdempotencyRepository } from '../ports'
 import { createSuccessEnvelope, AppError } from '../http'
 import { ErrorCode } from '@rabbit/shared'
 import { authMiddleware, requireAuth, requireIdempotencyKey } from '../middleware'
@@ -27,6 +27,7 @@ import { canActAsTeacher } from '../auth'
 export function createBookingRouter(deps: {
   bookingRepo: BookingRepository
   teacherRepo: TeacherRepository
+  studentRepo: StudentRepository
   idempotencyRepo: IdempotencyRepository
 }): Router {
   const router = Router()
@@ -111,17 +112,32 @@ export function createBookingRouter(deps: {
       throw new AppError(ErrorCode.VALIDATION_FAILED, 'Booking not found')
     }
 
-    // Authorization: must be teacher or the student
-    const isTeacher =
-      principal.kind === 'User' &&
-      principal.userId !== null &&
-      (await deps.teacherRepo.hasTeacherCapability(principal.userId))
-    const isStudent =
-      (principal.kind === 'Student' && principal.studentId === booking.studentId) ||
-      (principal.kind === 'User' && principal.userId !== null)
+    // Authorization: must be teacher OR authorized student for this booking
+    let authorized = false
 
-    if (!isTeacher && !isStudent) {
-      throw new AppError(ErrorCode.FORBIDDEN)
+    // Teacher path: User must own this teacherId
+    if (principal.kind === 'User' && principal.userId) {
+      const userTeacher = await deps.teacherRepo.findByUserId(principal.userId)
+      if (userTeacher && userTeacher.teacherId === booking.teacherId) {
+        authorized = true
+      }
+    }
+
+    // Student path: must be this booking's student with verified binding
+    if (!authorized) {
+      if (principal.kind === 'Student') {
+        // Student session must match booking's studentId
+        authorized = principal.studentId === booking.studentId
+      } else if (principal.kind === 'User' && principal.userId) {
+        // User must be bound to this booking's student
+        // Check if this user has a binding to the booking's student
+        const studentBinding = await deps.studentRepo.findByTeacherAndUser(booking.teacherId, principal.userId)
+        authorized = studentBinding !== null && studentBinding.student.studentId === booking.studentId
+      }
+    }
+
+    if (!authorized) {
+      throw new AppError(ErrorCode.FORBIDDEN, 'Cannot access this booking')
     }
 
     res.json(createSuccessEnvelope({ booking }, req.requestId))
@@ -147,11 +163,12 @@ export function createBookingRouter(deps: {
    * DELETE /v1/bookings/:bookingId/completion
    * 
    * Undo completion (teacher only, within undo window)
+   * REQUIRES: Idempotency-Key header (no fallback)
    */
-  router.delete('/:bookingId/completion', authMiddleware, requireAuth, async (req, res) => {
+  router.delete('/:bookingId/completion', authMiddleware, requireAuth, requireIdempotencyKey, async (req, res) => {
     const { bookingId } = req.params
     const principal = req.principal
-    const idempotencyKey = (req as any).idempotencyKey || 'no-key-undo'
+    const idempotencyKey = (req as any).idempotencyKey
 
     const result = await deps.bookingRepo.undoCompletion(bookingId, principal, idempotencyKey)
 

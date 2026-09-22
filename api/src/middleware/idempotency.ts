@@ -60,6 +60,7 @@ export function createIdempotencyMiddleware(idempotencyRepo: IdempotencyReposito
     const requestHash = computeRequestHash(req)
 
     try {
+      // Check for existing idempotency record using Principal
       const existing = await idempotencyRepo.findExisting(req.principal, endpoint, idempotencyKey)
 
       if (!existing) {
@@ -68,19 +69,20 @@ export function createIdempotencyMiddleware(idempotencyRepo: IdempotencyReposito
         return next()
       }
 
-      // Found existing record - check if it's a replay or key reuse
+      // Found existing record - check if replay (same hash) or reuse (different hash)
       if (existing.requestHash === requestHash) {
-        // Same request -> replay response
+        // Replay: same request -> return cached response
         res.status(existing.responseStatus).json(JSON.parse(existing.responseBody))
         return
       }
 
-      // Different request with same key -> error
+      // Key reuse: different request with same key
       throw new AppError(
         ErrorCode.IDEMPOTENCY_KEY_REUSED,
         '同一幂等键被用于不同的请求',
         {
           currentEndpoint: endpoint,
+          currentHash: requestHash.substring(0, 8),
         }
       )
     } catch (error) {
