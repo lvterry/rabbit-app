@@ -4,21 +4,37 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "echo 'API dev server not yet implemented' && exit 0",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "echo 'API tests not yet implemented' && exit 0",
-    "test:domain": "echo 'Domain tests not yet implemented' && exit 0",
+    "test": "vitest run",
+    "test:domain": "vitest run test/domain",
+    "test:db": "vitest run test/db",
+    "test:integration": "vitest run test/integration",
+    "test:api": "vitest run test/http",
     "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
     "@rabbit/shared": "workspace:*",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "crypto": "npm:node-stdlib-browser@^1.2.0",
     "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "node-apn": "^3.0.0",
     "pg": "^8.11.3"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.10.0",
     "@types/pg": "^8.10.9",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.2.2",
+    "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "vitest": "^1.1.0"
   }
