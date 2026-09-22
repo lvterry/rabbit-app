@@ -48,7 +48,7 @@ let teacherAccessToken: string
 let completeIdempotencyKey: string // For test 8 & 9 idempotency replay
 
 // Availability slot times (relative to "now" for self-bookable slots)
-const slotStartOffsetHours = 48 // 2 days from now (beyond minLeadHours)
+const slotStartOffsetHours = 500 // Far enough to avoid any conflicts with other tests
 
 beforeAll(async () => {
   if (!process.env.DATABASE_URL) {
