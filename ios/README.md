@@ -71,6 +71,38 @@ Set environment variables in Xcode scheme (Edit Scheme → Run → Arguments →
 - `API_BASE_URL` - API server URL (default: `http://localhost:8787`)
 - `DEMO_MODE` - Enable demo tools (set to `true` for development)
 
+#### Local API Testing & Stabilization E2E
+
+For **real API integration** (Wave 1 Stabilization E2E or local development against backend):
+
+1. **Start Local Backend Stack:**
+   ```bash
+   # From repository root
+   docker-compose up -d postgres
+   pnpm dev  # Starts API on http://localhost:8787
+   ```
+
+2. **Configure Xcode Scheme:**
+   - Menu: **Product → Scheme → Edit Scheme…** (`⌘<`)
+   - Select **Run** → **Arguments** tab
+   - Add environment variable:
+     - `API_BASE_URL` = `http://localhost:8787`
+   - **Note:** iOS Simulator's `localhost` automatically maps to host Mac's `localhost`
+
+3. **Authentication Limitation:**
+   - ⚠️ **Sign in with Apple** is not yet wired to local API
+   - Wave 1 Stabilization E2E auth path: TBD by Architect (dev teacher endpoint preferred)
+   - Currently, Xcode Previews with mock repositories remain the primary development workflow
+   - See `ios/docs/wave1-stabilization-e2e-checklist.md` for full E2E walkthrough details
+
+4. **Verify API Connectivity:**
+   ```bash
+   curl http://localhost:8787/v1/meta
+   # Should return: {"status":"ok",...}
+   ```
+
+**Important:** Mock/Preview-only testing does NOT satisfy the E2E exit gate. Real API integration with authenticated Principal is required for Wave 1 Stabilization validation.
+
 ### 3. Build & Run
 
 Select iPhone 15 simulator and run (⌘R).
