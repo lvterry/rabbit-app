@@ -70,6 +70,7 @@ beforeAll(async () => {
 afterAll(async () => {
   // Cleanup
   if (pool) {
+    await pool.query('DELETE FROM idempotency_record WHERE user_id = $1', [userId])
     await pool.query('DELETE FROM booking WHERE student_id = $1', [studentId])
     await pool.query('DELETE FROM package_transaction WHERE package_id = $1', [packageId])
     await pool.query('DELETE FROM lesson_package WHERE id = $1', [packageId])
