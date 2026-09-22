@@ -188,9 +188,27 @@ export function createAuthRouter(deps: {
    * 
    * Development-only teacher authentication (for iOS E2E testing)
    * 
-   * Only available when NODE_ENV is 'development' or 'test'
-   * Returns real User session tokens for seeded teacher
+   * CONTRACT LOCKED (Nina's iOS SessionStore depends on this exact shape):
    * 
+   * Request:
+   *   - Body: {} (empty) or { teacherId?: string }
+   *   - NODE_ENV must be 'development' or 'test' (else 404)
+   * 
+   * Success (200):
+   *   data: {
+   *     accessToken: string (JWT, 15min TTL)
+   *     refreshToken: string (JWT, 180d TTL)
+   *     expiresIn: 900
+   *     user: { userId, nickname, avatarUrl }
+   *     isTeacher: true
+   *     teacher: { teacherId, userId, name, avatar, bio, timezone,
+   *                slotStepMinutes, minLeadHours, maxAdvanceDays,
+   *                freeCancelHours, autoSettleHours, undoCompleteDays,
+   *                maxReschedules, status }
+   *     students: []
+   *   }
+   * 
+   * Shape matches contracts/fixtures/auth/me-user-teacher.json
    * NOT DEMO_MODE - real tokens work against real API routes
    */
   router.post('/dev/teacher', asyncHandler(async (req, res) => {
@@ -208,10 +226,20 @@ export function createAuthRouter(deps: {
       return
     }
 
-    // Optional: allow specifying which teacher by email/ID in body
-    // For simplicity, return the first active teacher in the database
-    const teachers = await deps.teacherRepo.listAll?.() || []
-    const teacher = teachers.find(t => t.status === 'Active') || teachers[0]
+    // Optional: specify teacherId in body, else use first Active teacher
+    const { teacherId } = req.body
+    
+    let teacher
+    if (teacherId) {
+      teacher = await deps.teacherRepo.findById(teacherId)
+      if (!teacher) {
+        throw new AppError(ErrorCode.INTERNAL, `Teacher ${teacherId} not found`)
+      }
+    } else {
+      // Default: return first Active teacher in database
+      const teachers = await deps.teacherRepo.listAll?.() || []
+      teacher = teachers.find(t => t.status === 'Active') || teachers[0]
+    }
 
     if (!teacher || !teacher.userId) {
       throw new AppError(ErrorCode.INTERNAL, 'No seeded teacher found. Run seed script first.')
@@ -221,6 +249,7 @@ export function createAuthRouter(deps: {
     const accessToken = generateUserAccessToken(teacher.userId)
     const refreshToken = generateUserRefreshToken(teacher.userId)
 
+    // Response shape locked to match contracts/fixtures/auth/me-user-teacher.json
     res.json(
       createSuccessEnvelope(
         {
