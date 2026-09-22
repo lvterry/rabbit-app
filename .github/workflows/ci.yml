@@ -33,3 +33,27 @@ jobs:
       
       - name: Contract tests
         run: pnpm test:contract
+
+  ios-build-gate:
+    name: iOS Build Gate
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+      
+      - name: Resolve Swift package dependencies
+        run: xcodebuild -resolvePackageDependencies -project ios/Rabbit.xcodeproj -scheme Rabbit
+      
+      - name: Build for iOS Simulator
+        run: |
+          xcodebuild \
+            -project ios/Rabbit.xcodeproj \
+            -scheme Rabbit \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -configuration Debug \
+            build
