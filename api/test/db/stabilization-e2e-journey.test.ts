@@ -475,6 +475,7 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
     const res = await request
       .delete(`/v1/bookings/${booking2Id}/completion`)
       .set('Authorization', `Bearer ${teacherAccessToken}`)
+      .set('Idempotency-Key', randomUUID())
       .expect(200)
 
     expect(res.body.ok).toBe(true)
