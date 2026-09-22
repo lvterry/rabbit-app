@@ -1,0 +1,106 @@
+/**
+ * Rabbit Design Tokens
+ * Official brand colors and design system
+ */
+
+:root {
+  /* Primary Colors - Rabbit Green */
+  --color-primary: #10A050;
+  --color-primary-light: #E8F5EE;
+  --color-primary-dark: #0D8040;
+  
+  /* Accent Colors */
+  --color-yellow: #FFD04A;
+  --color-yellow-light: #FFF9E5;
+  
+  /* Success/Status Colors */
+  --color-success: #10A050;
+  --color-warning: #FFD04A;
+  --color-danger: #FF3B30;
+  --color-info: #5AC8FA;
+  
+  /* Text Colors */
+  --color-text: #1A1A1A;
+  --color-text-secondary: #6B6B6B;
+  --color-text-tertiary: #9B9B9B;
+  
+  /* Background Colors - Paper-like */
+  --color-background: #FFFFFF;
+  --color-background-secondary: #F8F8F6;
+  --color-background-tertiary: #F0F0ED;
+  --color-surface: #FFFFFF;
+  
+  /* Border Colors */
+  --color-border: #E5E5E0;
+  --color-divider: #EFEFEB;
+  
+  /* Spacing Scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  
+  /* Border Radius - Large and friendly */
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-full: 9999px;
+  
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', 
+                 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 
+                 system-ui, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 28px;
+  --font-size-3xl: 32px;
+  
+  /* Line Heights */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+  
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  
+  /* Safe Area Insets for iOS/WeChat */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  
+  /* Minimum Tap Target Size (44px for WeChat safety) */
+  --tap-target-min: 44px;
+  
+  /* Tab Bar Height */
+  --tab-bar-height: 56px;
+}
+
+/* Dark mode support (if needed in future) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-text: #FFFFFF;
+    --color-text-secondary: #B3B3B3;
+    --color-text-tertiary: #8A8A8A;
+    --color-background: #1A1A1A;
+    --color-background-secondary: #2A2A2A;
+    --color-background-tertiary: #3A3A3A;
+    --color-surface: #2A2A2A;
+    --color-border: #3A3A3A;
+    --color-divider: #333333;
+  }
+}
