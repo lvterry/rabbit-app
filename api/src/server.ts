@@ -20,7 +20,7 @@ import {
   BookingRepositoryImpl,
   IdempotencyRepositoryImpl,
 } from './db/repositories'
-import { requestIdMiddleware, authMiddleware, errorHandler, notFoundHandler } from './middleware'
+import { requestIdMiddleware, authMiddleware, createErrorHandler, notFoundHandler } from './middleware'
 import { createIdempotencyMiddleware } from './middleware/idempotency'
 import { createApiRouter } from './routes'
 
@@ -79,8 +79,8 @@ async function startServer() {
   // 404 handler
   app.use(notFoundHandler)
 
-  // Error handler (must be last)
-  app.use(errorHandler)
+  // Error handler (must be last) - inject idempotencyRepo for 23505 handling  
+  app.use(createErrorHandler(idempotencyRepo))
 
   // Start server
   app.listen(PORT, () => {

@@ -4,5 +4,5 @@
 
 export * from './auth'
 export * from './requestId'
-export * from './errorHandler'
+export { createErrorHandler, errorHandler, notFoundHandler } from './errorHandler'
 export * from './idempotency'
