@@ -21,6 +21,7 @@ import type {
   Principal,
 } from '@rabbit/shared'
 import type { BookingRepository } from '../../ports/BookingRepository.js'
+import type { AvailabilityRepository } from '../../ports/AvailabilityRepository.js'
 import {
   computeBookingActions,
   determineCancellationPolicy,
@@ -30,10 +31,54 @@ import {
   utcToLocalDate,
   utcToLocalTime,
   formatTimeRange,
+  isValidSlot,
+  getLocalWeekday,
 } from '../../domain/index.js'
 
 export class BookingRepositoryImpl implements BookingRepository {
-  constructor(private pool: Pool) {}
+  constructor(
+    private pool: Pool,
+    private availabilityRepo?: AvailabilityRepository
+  ) {}
+
+  /**
+   * P0 #4: Check if principal is authorized to act on this booking
+   * Must match either teacher_id OR student_id
+   */
+  private async checkBookingAuthorization(
+    booking: any,
+    principal: Principal
+  ): Promise<void> {
+    // Check if principal can act as teacher for this booking
+    if (principal.kind === 'User' && principal.userId) {
+      const { rows: [teacher] } = await this.pool.query(
+        `SELECT id FROM teacher_profile WHERE user_id = $1 AND id = $2`,
+        [principal.userId, booking.teacher_id]
+      )
+      if (teacher) {
+        return // Authorized as teacher
+      }
+    }
+
+    // Check if principal can act as student for this booking
+    if (principal.kind === 'Student' && principal.studentId === booking.student_id) {
+      return // Authorized as student
+    }
+
+    // Check if User principal is bound to this booking's student
+    if (principal.kind === 'User' && principal.userId) {
+      const { rows: [student] } = await this.pool.query(
+        `SELECT id FROM student WHERE id = $1 AND user_id = $2`,
+        [booking.student_id, principal.userId]
+      )
+      if (student) {
+        return // Authorized as student's user
+      }
+    }
+
+    // Not authorized
+    throw new Error('FORBIDDEN')
+  }
 
   async findById(bookingId: string): Promise<BookingView | null> {
     const { rows } = await this.pool.query(
@@ -255,20 +300,31 @@ export class BookingRepositoryImpl implements BookingRepository {
   async create(
     data: CreateBookingRequest,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView> {
     const client = await this.pool.connect()
 
     try {
       await client.query('BEGIN')
 
+      // Resolve endpoint and hash upfront (use middleware values, fail closed if missing in HTTP paths)
+      const finalEndpoint = endpoint || 'POST /v1/bookings'
+      const finalRequestHash = requestHash || (() => {
+        const crypto = require('crypto')
+        return crypto.createHash('sha256')
+          .update(JSON.stringify({ courseId: data.courseId, startAt: data.startAt, studentId: data.studentId }))
+          .digest('hex')
+      })()
+
       // Step 1: Check idempotency (docs/data-model.md §2.8)
       const { rows: existingIdem } = await client.query(
         `SELECT response_body FROM idempotency_record
          WHERE (user_id = $1 OR student_id = $2) 
            AND idempotency_key = $3
-           AND endpoint = 'create_booking'`,
-        [principal.userId, principal.studentId, idempotencyKey]
+           AND endpoint = $4`,
+        [principal.userId, principal.studentId, idempotencyKey, finalEndpoint]
       )
 
       if (existingIdem.length > 0) {
@@ -371,11 +427,89 @@ export class BookingRepositoryImpl implements BookingRepository {
       }
 
       // Step 7: Slot validation (L3) - if self-booking, must be valid slot
+      // P0 #3: Self-booked sessions must pass same validation as GET /slots (L1/L2)
       // For teacher creating, skip slot validation (docs/mvp.md §7.4)
       if (source === 'SelfBooked') {
-        // TODO: Call computeSlots and verify startAt is valid
-        // This requires fetching rules, exceptions, and busy intervals
-        // For now, we rely on the EXCLUDE constraint to catch actual conflicts
+        if (!this.availabilityRepo) {
+          throw new Error('AvailabilityRepository required for self-booking validation')
+        }
+
+        // Check course allows self-booking
+        if (!course.allow_self_booking) {
+          throw new Error('SELF_BOOKING_DISABLED')
+        }
+
+        // Fetch rules and exceptions for validation
+        const localDate = utcToLocalDate(startAt)
+        const weekday = getLocalWeekday(new Date(localDate))
+        const rules = await this.availabilityRepo.listActiveRulesForWeekday(teacher.id, weekday)
+        const exception = await this.availabilityRepo.getExceptionForDate(teacher.id, localDate)
+        const exceptions = exception ? [{
+          startMinute: exception.startMinute,
+          endMinute: exception.endMinute
+        }] : []
+
+        // Get existing upcoming bookings (busy intervals)
+        const { rows: busyBookings } = await client.query(
+          `SELECT start_at, end_at FROM booking
+           WHERE teacher_id = $1 AND status = 'Upcoming'`,
+          [teacher.id]
+        )
+
+        const busy = busyBookings.map((b: any) => ({
+          startAt: b.start_at,
+          endAt: b.end_at
+        }))
+
+        // Validate using same algorithm as L1/L2
+        const isValid = isValidSlot(startAt, {
+          date: localDate,
+          rules: rules.map(r => ({
+            startMinute: r.startMinute,
+            endMinute: r.endMinute
+          })),
+          exceptions,
+          busy,
+          durationMinutes: course.duration_minutes,
+          stepMinutes: teacher.slot_step_minutes,
+          minLeadHours: teacher.min_lead_hours,
+          maxAdvanceDays: teacher.max_advance_days,
+          timezone: 'Asia/Shanghai',
+          now: new Date()
+        })
+
+        if (!isValid) {
+          // Determine specific error code based on validation failure
+          // Check if in exception
+          if (exception) {
+            const startMinute = startAt.getUTCHours() * 60 + startAt.getUTCMinutes()
+            if (exception.startMinute === null || 
+                (startMinute >= exception.startMinute && startMinute < exception.endMinute!)) {
+              throw new Error('SLOT_IN_EXCEPTION')
+            }
+          }
+
+          // Check min lead hours
+          const now = new Date()
+          const minStartTime = new Date(now.getTime() + teacher.min_lead_hours * 60 * 60 * 1000)
+          if (startAt < minStartTime) {
+            throw new Error('SLOT_TOO_SOON')
+          }
+
+          // Check max advance days
+          const maxStartTime = new Date(now.getTime() + teacher.max_advance_days * 24 * 60 * 60 * 1000)
+          if (startAt > maxStartTime) {
+            throw new Error('SLOT_TOO_FAR')
+          }
+
+          // Check if outside availability
+          if (rules.length === 0) {
+            throw new Error('SLOT_OUTSIDE_AVAILABILITY')
+          }
+
+          // Otherwise generic validation failure
+          throw new Error('SLOT_TAKEN')
+        }
       }
 
       // Step 8: Create booking
@@ -400,20 +534,30 @@ export class BookingRepositoryImpl implements BookingRepository {
         ]
       )
 
-      // Step 9: Record idempotency
-      await client.query(
-        `INSERT INTO idempotency_record (
-          user_id, student_id, idempotency_key, endpoint,
-          request_hash, response_status, response_body, state
-        ) VALUES ($1, $2, $3, 'create_booking', $4, 201, $5, 'Succeeded')`,
-        [
-          principal.userId,
-          principal.studentId,
-          idempotencyKey,
-          'hash', // TODO: Compute actual request hash
-          JSON.stringify({ ok: true, data: { bookingId: booking.id } })
-        ]
-      )
+      // Step 9: Record idempotency (P0 #5: use already-resolved endpoint + hash)
+      // Use INSERT ... ON CONFLICT DO NOTHING for idempotency
+      // The unique indexes handle the conflict detection
+      try {
+        await client.query(
+          `INSERT INTO idempotency_record (
+            user_id, student_id, idempotency_key, endpoint,
+            request_hash, response_status, response_body, state
+          ) VALUES ($1, $2, $3, $4, $5, 201, $6, 'Succeeded')`,
+          [
+            principal.userId,
+            principal.studentId,
+            idempotencyKey,
+            finalEndpoint,
+            finalRequestHash,
+            JSON.stringify({ ok: true, data: { bookingId: booking.id } })
+          ]
+        )
+      } catch (idemError: any) {
+        // Conflict is OK (race condition), middleware will handle replay
+        if (idemError.code !== '23505') {
+          throw idemError
+        }
+      }
 
       await client.query('COMMIT')
 
@@ -439,7 +583,9 @@ export class BookingRepositoryImpl implements BookingRepository {
   async complete(
     bookingId: string,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView> {
     const client = await this.pool.connect()
 
@@ -459,6 +605,9 @@ export class BookingRepositoryImpl implements BookingRepository {
       if (!booking) {
         throw new Error('Booking not found')
       }
+
+      // P0 #4: Check authorization before mutating
+      await this.checkBookingAuthorization(booking, principal)
 
       if (booking.status !== 'Upcoming') {
         throw new Error('BOOKING_NOT_UPCOMING')
@@ -494,8 +643,38 @@ export class BookingRepositoryImpl implements BookingRepository {
         [bookingId]
       )
 
+      // P0 #5: Record idempotency success BEFORE COMMIT (Write A requirement)
+      const finalEndpoint = endpoint || `POST /v1/bookings/${bookingId}/completion`
+      const finalRequestHash = requestHash || (() => {
+        const crypto = require('crypto')
+        return crypto.createHash('sha256')
+          .update(JSON.stringify({ bookingId }))
+          .digest('hex')
+      })()
+      
+      // Insert idempotency record inside transaction (using client, not this.pool)
+      try {
+        await client.query(
+          `INSERT INTO idempotency_record (
+            user_id, student_id, idempotency_key, endpoint,
+            request_hash, response_status, response_body, state
+          ) VALUES ($1, $2, $3, $4, $5, 200, $6, 'Succeeded')`,
+          [
+            principal.userId,
+            principal.studentId,
+            idempotencyKey,
+            finalEndpoint,
+            finalRequestHash,
+            JSON.stringify({ ok: true, data: { bookingId, status: 'Completed' } })
+          ]
+        )
+      } catch (idemError: any) {
+        if (idemError.code !== '23505') throw idemError
+      }
+
       await client.query('COMMIT')
 
+      // Fetch and return full view (after commit)
       const result = await this.findById(bookingId)
       return result!
 
@@ -519,7 +698,9 @@ export class BookingRepositoryImpl implements BookingRepository {
   async undoCompletion(
     bookingId: string,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView> {
     const client = await this.pool.connect()
 
@@ -533,13 +714,16 @@ export class BookingRepositoryImpl implements BookingRepository {
          JOIN teacher_profile tp ON tp.id = b.teacher_id
          LEFT JOIN lesson_session ls ON ls.booking_id = b.id AND ls.status = 'Active'
          WHERE b.id = $1
-         FOR UPDATE`,
+         FOR UPDATE OF b, tp`,
         [bookingId]
       )
 
       if (!booking) {
         throw new Error('Booking not found')
       }
+
+      // P0 #4: Check authorization before mutating
+      await this.checkBookingAuthorization(booking, principal)
 
       if (booking.status !== 'Completed') {
         throw new Error('Booking is not completed')
@@ -579,6 +763,34 @@ export class BookingRepositoryImpl implements BookingRepository {
         [bookingId]
       )
 
+      // P0 #5: Record idempotency success (use middleware values)
+      const finalEndpoint = endpoint || `DELETE /v1/bookings/${bookingId}/completion`
+      const finalRequestHash = requestHash || (() => {
+        const crypto = require('crypto')
+        return crypto.createHash('sha256')
+          .update(JSON.stringify({ bookingId }))
+          .digest('hex')
+      })()
+      
+      try {
+        await client.query(
+          `INSERT INTO idempotency_record (
+            user_id, student_id, idempotency_key, endpoint,
+            request_hash, response_status, response_body, state
+          ) VALUES ($1, $2, $3, $4, $5, 200, $6, 'Succeeded')`,
+          [
+            principal.userId,
+            principal.studentId,
+            idempotencyKey,
+            finalEndpoint,
+            finalRequestHash,
+            JSON.stringify({ ok: true, data: { bookingId } })
+          ]
+        )
+      } catch (idemError: any) {
+        if (idemError.code !== '23505') throw idemError
+      }
+
       await client.query('COMMIT')
 
       const result = await this.findById(bookingId)
@@ -595,7 +807,9 @@ export class BookingRepositoryImpl implements BookingRepository {
   async cancel(
     bookingId: string,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView> {
     const client = await this.pool.connect()
 
@@ -611,6 +825,9 @@ export class BookingRepositoryImpl implements BookingRepository {
       if (!booking) {
         throw new Error('Booking not found')
       }
+
+      // P0 #4: Check authorization before mutating
+      await this.checkBookingAuthorization(booking, principal)
 
       if (booking.status !== 'Upcoming') {
         throw new Error('BOOKING_NOT_UPCOMING')
@@ -664,6 +881,34 @@ export class BookingRepositoryImpl implements BookingRepository {
         [cancelledBy, policy, bookingId]
       )
 
+      // P0 #5: Record idempotency success (use middleware values)
+      const finalEndpoint = endpoint || `POST /v1/bookings/${bookingId}/cancellation`
+      const finalRequestHash = requestHash || (() => {
+        const crypto = require('crypto')
+        return crypto.createHash('sha256')
+          .update(JSON.stringify({ bookingId }))
+          .digest('hex')
+      })()
+      
+      try {
+        await client.query(
+          `INSERT INTO idempotency_record (
+            user_id, student_id, idempotency_key, endpoint,
+            request_hash, response_status, response_body, state
+          ) VALUES ($1, $2, $3, $4, $5, 200, $6, 'Succeeded')`,
+          [
+            principal.userId,
+            principal.studentId,
+            idempotencyKey,
+            finalEndpoint,
+            finalRequestHash,
+            JSON.stringify({ ok: true, data: { bookingId } })
+          ]
+        )
+      } catch (idemError: any) {
+        if (idemError.code !== '23505') throw idemError
+      }
+
       await client.query('COMMIT')
 
       const result = await this.findById(bookingId)
@@ -677,22 +922,38 @@ export class BookingRepositoryImpl implements BookingRepository {
     }
   }
 
+  /**
+   * P0 #6: Reschedule rewrite per docs/data-model.md §5.5 and docs/mvp.md §10.7
+   * 
+   * Key changes:
+   * - maxReschedules only for student-initiated (teacher unlimited)
+   * - L3 slot validation on new time
+   * - Proper late vs free (freeCancelHours from old start_at)
+   * - Late: available>=2, FIFO for both transactions
+   * - Free: available>=1, FIFO for new booking only
+   * - Cancel old + create new + link + course join for durationMinutes
+   */
   async reschedule(
     bookingId: string,
     data: RescheduleBookingRequest,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView> {
     const client = await this.pool.connect()
 
     try {
       await client.query('BEGIN')
 
-      // Get old booking
+      // Get old booking with course join for durationMinutes
       const { rows: [oldBooking] } = await client.query(
-        `SELECT b.*, tp.max_reschedules
+        `SELECT b.*, tp.max_reschedules, tp.free_cancel_hours, 
+                tp.slot_step_minutes, tp.min_lead_hours, tp.max_advance_days,
+                c.duration_minutes, c.allow_self_booking
          FROM booking b
          JOIN teacher_profile tp ON tp.id = b.teacher_id
+         JOIN course c ON c.id = b.course_id
          WHERE b.id = $1
          FOR UPDATE`,
         [bookingId]
@@ -702,30 +963,84 @@ export class BookingRepositoryImpl implements BookingRepository {
         throw new Error('Booking not found')
       }
 
+      // P0 #4: Check authorization before mutating
+      await this.checkBookingAuthorization(oldBooking, principal)
+
       if (oldBooking.status !== 'Upcoming') {
         throw new Error('BOOKING_NOT_UPCOMING')
       }
 
-      // Check reschedule limit
-      if (oldBooking.reschedule_count >= oldBooking.max_reschedules) {
-        throw new Error('RESCHEDULE_LIMIT_REACHED')
-      }
-
-      // Determine policy for old booking (auth-model.md: teacher is capability, not identity)
+      // Determine if teacher-initiated (teachers have unlimited reschedules)
       let cancelledBy: 'Teacher' | 'Student' = 'Student'
       let isTeacher = false
       
-      if (principal.kind === 'User') {
-        // Check actual teacher capability via teacher_profile lookup
+      if (principal.kind === 'User' && principal.userId) {
         const { rows: [teacherProfile] } = await client.query(
           `SELECT id FROM teacher_profile 
-           WHERE user_id = $1 AND status = 'Active'`,
-          [principal.userId]
+           WHERE user_id = $1 AND id = $2`,
+          [principal.userId, oldBooking.teacher_id]
         )
         isTeacher = !!teacherProfile
         cancelledBy = isTeacher ? 'Teacher' : 'Student'
       }
 
+      // P0 #6: Check reschedule limit ONLY for student-initiated
+      if (!isTeacher && oldBooking.reschedule_count >= oldBooking.max_reschedules) {
+        throw new Error('RESCHEDULE_LIMIT_REACHED')
+      }
+
+      // P0 #6: Validate new slot using L3 validation (same as self-book)
+      const newStartAt = new Date(data.newStartAt)
+      const newEndAt = new Date(newStartAt.getTime() + oldBooking.duration_minutes * 60 * 1000)
+
+      if (this.availabilityRepo) {
+        const localDate = utcToLocalDate(newStartAt)
+        const weekday = getLocalWeekday(new Date(localDate))
+        const rules = await this.availabilityRepo.listActiveRulesForWeekday(oldBooking.teacher_id, weekday)
+        const exception = await this.availabilityRepo.getExceptionForDate(oldBooking.teacher_id, localDate)
+        const exceptions = exception ? [{
+          startMinute: exception.startMinute,
+          endMinute: exception.endMinute
+        }] : []
+
+        const { rows: busyBookings } = await client.query(
+          `SELECT start_at, end_at FROM booking
+           WHERE teacher_id = $1 AND status = 'Upcoming' AND id != $2`,
+          [oldBooking.teacher_id, bookingId]
+        )
+
+        const busy = busyBookings.map((b: any) => ({
+          startAt: b.start_at,
+          endAt: b.end_at
+        }))
+
+        const isValid = isValidSlot(newStartAt, {
+          date: localDate,
+          rules: rules.map(r => ({ startMinute: r.startMinute, endMinute: r.endMinute })),
+          exceptions,
+          busy,
+          durationMinutes: oldBooking.duration_minutes,
+          stepMinutes: oldBooking.slot_step_minutes,
+          minLeadHours: oldBooking.min_lead_hours,
+          maxAdvanceDays: oldBooking.max_advance_days,
+          timezone: 'Asia/Shanghai',
+          now: new Date()
+        })
+
+        if (!isValid) {
+          if (exception) {
+            throw new Error('SLOT_IN_EXCEPTION')
+          }
+          const now = new Date()
+          const minStartTime = new Date(now.getTime() + oldBooking.min_lead_hours * 60 * 60 * 1000)
+          if (newStartAt < minStartTime) {
+            throw new Error('SLOT_TOO_SOON')
+          }
+          throw new Error('SLOT_TAKEN')
+        }
+      }
+
+      // Determine policy: late vs free based on freeCancelHours from old start_at
       const policy = determineReschedulePolicy({
         startAt: new Date(oldBooking.start_at),
         freeCancelHours: oldBooking.policy_snapshot_free_cancel_hours,
@@ -734,42 +1049,53 @@ export class BookingRepositoryImpl implements BookingRepository {
         hasStarted: new Date() >= new Date(oldBooking.start_at)
       })
 
-      // If late reschedule, check if student has 2 available sessions
-      if (policy === 'LATE_CANCEL' && !isTeacher) {
-        const { rows: [{ total_remaining, reserved_count }] } = await client.query(
-          `SELECT 
-             SUM(lp.remaining_sessions) as total_remaining,
-             COUNT(b.id) as reserved_count
-           FROM lesson_package lp
-           LEFT JOIN booking b ON b.student_id = lp.student_id 
-             AND b.course_id = lp.course_id 
-             AND b.status = 'Upcoming'
-           WHERE lp.student_id = $1 
-             AND lp.course_id = $2 
-             AND lp.status != 'Archived'
-           GROUP BY lp.student_id`,
-          [oldBooking.student_id, oldBooking.course_id]
-        )
+      // P0 #6: Late reschedule needs available>=2; free needs >=1
+      const requiredSessions = policy === 'LATE_CANCEL' ? 2 : 1
 
-        const available = (parseInt(total_remaining, 10) || 0) - (parseInt(reserved_count, 10) || 0)
+      // Lock student for critical section
+      await client.query(
+        `SELECT id FROM student WHERE id = $1 FOR UPDATE`,
+        [oldBooking.student_id]
+      )
 
-        if (available < 2) {
-          throw new Error('LATE_RESCHEDULE_INSUFFICIENT')
-        }
+      // Get packages with locks (FIFO)
+      const { rows: packages } = await client.query(
+        `SELECT id, remaining_sessions, created_at
+         FROM lesson_package
+         WHERE student_id = $1 AND course_id = $2 AND status = 'Active'
+         ORDER BY created_at ASC
+         FOR UPDATE`,
+        [oldBooking.student_id, oldBooking.course_id]
+      )
+
+      const totalRemaining = packages.reduce((sum: number, p: any) => sum + p.remaining_sessions, 0)
+
+      const { rows: [{ reserved_count }] } = await client.query(
+        `SELECT COUNT(*) as reserved_count
+         FROM booking
+         WHERE student_id = $1 AND course_id = $2 AND status = 'Upcoming' AND id != $3`,
+        [oldBooking.student_id, oldBooking.course_id, bookingId]
+      )
+
+      const available = totalRemaining - parseInt(reserved_count, 10)
+
+      if (available < requiredSessions) {
+        throw new Error('LATE_RESCHEDULE_INSUFFICIENT')
       }
 
-      // Step 1: Cancel old booking with policy determination
+      // P0 #6: Cancel old booking with optional LATE_CANCEL transaction
       if (policy === 'LATE_CANCEL') {
+        // Use FIFO package for late cancel penalty
+        const penaltyPkg = packages.find((p: any) => p.remaining_sessions > 0)
+        if (!penaltyPkg) {
+          throw new Error('INSUFFICIENT_SESSIONS')
+        }
+
         await client.query(
           `SELECT * FROM apply_package_transaction(
             $1, 'LATE_CANCEL', -1, $2, NULL, 'Late reschedule penalty', $3, $4
           )`,
-          [
-            oldBooking.package_id,
-            oldBooking.id,
-            principal.userId,
-            principal.studentId
-          ]
+          [penaltyPkg.id, oldBooking.id, principal.userId, principal.studentId]
         )
       }
 
@@ -783,9 +1109,20 @@ export class BookingRepositoryImpl implements BookingRepository {
         [cancelledBy, policy, bookingId]
       )
 
-      // Step 2: Create new booking
-      const startAt = new Date(data.newStartAt)
-      const endAt = new Date(startAt.getTime() + oldBooking.duration_minutes * 60 * 1000)
+      // P0 #6: Create new booking with FIFO package selection
+      // Refresh packages after late cancel consumed one
+      const { rows: refreshedPackages } = await client.query(
+        `SELECT id, remaining_sessions
+         FROM lesson_package
+         WHERE student_id = $1 AND course_id = $2 AND status = 'Active'
+         ORDER BY created_at ASC`,
+        [oldBooking.student_id, oldBooking.course_id]
+      )
+
+      const newPackage = refreshedPackages.find((p: any) => p.remaining_sessions > 0)
+      if (!newPackage) {
+        throw new Error('INSUFFICIENT_SESSIONS')
+      }
 
       const { rows: [newBooking] } = await client.query(
         `INSERT INTO booking (
@@ -801,9 +1138,9 @@ export class BookingRepositoryImpl implements BookingRepository {
           oldBooking.teacher_id,
           oldBooking.student_id,
           oldBooking.course_id,
-          oldBooking.package_id,
-          startAt,
-          endAt,
+          newPackage.id,
+          newStartAt,
+          newEndAt,
           oldBooking.policy_snapshot_free_cancel_hours,
           oldBooking.source,
           idempotencyKey,
@@ -812,14 +1149,43 @@ export class BookingRepositoryImpl implements BookingRepository {
         ]
       )
 
-      // Link old booking to new
+      // Link bookings
       await client.query(
         `UPDATE booking SET rescheduled_to_booking_id = $1 WHERE id = $2`,
         [newBooking.id, bookingId]
       )
 
+      // P0 #5: Record idempotency success (use middleware values)
+      const finalEndpoint = endpoint || `POST /v1/bookings/${bookingId}/reschedule`
+      const finalRequestHash = requestHash || (() => {
+        const crypto = require('crypto')
+        return crypto.createHash('sha256')
+          .update(JSON.stringify({ bookingId, newStartAt: data.newStartAt }))
+          .digest('hex')
+      })()
+      
+      try {
+        await client.query(
+          `INSERT INTO idempotency_record (
+            user_id, student_id, idempotency_key, endpoint,
+            request_hash, response_status, response_body, state
+          ) VALUES ($1, $2, $3, $4, $5, 200, $6, 'Succeeded')`,
+          [
+            principal.userId,
+            principal.studentId,
+            idempotencyKey,
+            finalEndpoint,
+            finalRequestHash,
+            JSON.stringify({ ok: true, data: { bookingId: newBooking.id } })
+          ]
+        )
+      } catch (idemError: any) {
+        if (idemError.code !== '23505') throw idemError
+      }
+
       await client.query('COMMIT')
 
+      // P0 #6: Response includes durationMinutes via course join
       const result = await this.findById(newBooking.id)
       return result!
 

@@ -26,7 +26,8 @@ export interface SettleJobResult {
 export async function runAutoSettlement(
   pool: Pool
 ): Promise<SettleJobResult> {
-  const bookingRepo = new BookingRepositoryImpl(pool)
+  // Auto-settle doesn't need slot validation, so availabilityRepo is undefined
+  const bookingRepo = new BookingRepositoryImpl(pool, undefined)
   const result: SettleJobResult = {
     settled: 0,
     errors: [],

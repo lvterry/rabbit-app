@@ -51,7 +51,7 @@ async function startServer() {
   const studentRepo = new StudentRepositoryImpl(pool)
   const availabilityRepo = new AvailabilityRepositoryImpl(pool)
   const packageRepo = new PackageRepositoryImpl(pool)
-  const bookingRepo = new BookingRepositoryImpl(pool)
+  const bookingRepo = new BookingRepositoryImpl(pool, availabilityRepo)
   const idempotencyRepo = new IdempotencyRepositoryImpl(pool)
 
   // Auth middleware MUST run before idempotency (idempotency needs req.principal)

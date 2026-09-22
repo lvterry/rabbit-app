@@ -108,15 +108,17 @@ export class PackageRepositoryImpl implements PackageRepository {
     try {
       await client.query('BEGIN')
 
-      // Insert package
+      // Insert package with 0,0 - PACKAGE_CREATED will be the sole balance mutation
+      // P0 #1 fix: Prevent double-count by inserting zeros and letting apply_package_transaction
+      // be the single source of truth
       const { rows: [pkg] } = await client.query(
         `INSERT INTO lesson_package (
           teacher_id, student_id, course_id,
           purchased_sessions, remaining_sessions,
           status
-        ) VALUES ($1, $2, $3, $4, $5, 'Active')
+        ) VALUES ($1, $2, $3, 0, 0, 'Active')
         RETURNING *`,
-        [teacherId, studentId, data.courseId, data.sessions, data.sessions]
+        [teacherId, studentId, data.courseId]
       )
 
       // Create initial transaction via SECURITY DEFINER function

@@ -184,6 +184,108 @@ export function createAuthRouter(deps: {
   }))
 
   /**
+   * POST /v1/auth/dev/teacher
+   * 
+   * Development-only teacher authentication (for iOS E2E testing)
+   * 
+   * CONTRACT LOCKED (Nina's iOS SessionStore depends on this exact shape):
+   * 
+   * Request:
+   *   - Body: {} (empty) or { teacherId?: string }
+   *   - NODE_ENV must be 'development' or 'test' (else 404)
+   * 
+   * Success (200):
+   *   data: {
+   *     accessToken: string (JWT, 15min TTL)
+   *     refreshToken: string (JWT, 180d TTL)
+   *     expiresIn: 900
+   *     user: { userId, nickname, avatarUrl }
+   *     isTeacher: true
+   *     teacher: { teacherId, userId, name, avatar, bio, timezone,
+   *                slotStepMinutes, minLeadHours, maxAdvanceDays,
+   *                freeCancelHours, autoSettleHours, undoCompleteDays,
+   *                maxReschedules, status }
+   *     students: []
+   *   }
+   * 
+   * Shape matches contracts/fixtures/auth/me-user-teacher.json
+   * NOT DEMO_MODE - real tokens work against real API routes
+   */
+  router.post('/dev/teacher', asyncHandler(async (req, res) => {
+    const env = process.env.NODE_ENV || 'development'
+    
+    // Only available in development or test
+    if (env !== 'development' && env !== 'test') {
+      res.status(404).json({
+        ok: false,
+        code: 'NOT_FOUND',
+        message: 'Not found',
+        retryable: false,
+        requestId: req.requestId,
+      })
+      return
+    }
+
+    // Optional: specify teacherId in body, else use first Active teacher
+    const { teacherId } = req.body
+    
+    let teacher
+    if (teacherId) {
+      teacher = await deps.teacherRepo.findById(teacherId)
+      if (!teacher) {
+        throw new AppError(ErrorCode.INTERNAL, `Teacher ${teacherId} not found`)
+      }
+    } else {
+      // Default: return first Active teacher in database
+      const teachers = await deps.teacherRepo.listAll?.() || []
+      teacher = teachers.find(t => t.status === 'Active') || teachers[0]
+    }
+
+    if (!teacher || !teacher.userId) {
+      throw new AppError(ErrorCode.INTERNAL, 'No seeded teacher found. Run seed script first.')
+    }
+
+    // Generate real User session tokens
+    const accessToken = generateUserAccessToken(teacher.userId)
+    const refreshToken = generateUserRefreshToken(teacher.userId)
+
+    // Response shape locked to match contracts/fixtures/auth/me-user-teacher.json
+    res.json(
+      createSuccessEnvelope(
+        {
+          accessToken,
+          refreshToken,
+          expiresIn: 900,
+          user: {
+            userId: teacher.userId,
+            nickname: teacher.name,
+            avatarUrl: teacher.avatar || null,
+          },
+          isTeacher: true,
+          teacher: {
+            teacherId: teacher.teacherId,
+            userId: teacher.userId,
+            name: teacher.name,
+            avatar: teacher.avatar || null,
+            bio: teacher.bio || null,
+            timezone: teacher.timezone,
+            slotStepMinutes: teacher.slotStepMinutes,
+            minLeadHours: teacher.minLeadHours,
+            maxAdvanceDays: teacher.maxAdvanceDays,
+            freeCancelHours: teacher.freeCancelHours,
+            autoSettleHours: teacher.autoSettleHours,
+            undoCompleteDays: teacher.undoCompleteDays,
+            maxReschedules: teacher.maxReschedules,
+            status: teacher.status,
+          },
+          students: [],
+        },
+        req.requestId
+      )
+    )
+  }))
+
+  /**
    * GET /v1/meta
    * 
    * Server metadata (public endpoint)
