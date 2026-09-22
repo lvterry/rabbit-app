@@ -16,6 +16,14 @@ import type {
 } from '../ports'
 import { createAuthRouter } from './auth'
 import { createInviteRouter } from './invite'
+import { createBookingRouter } from './booking'
+import { createSlotsRouter } from './slots-simple'
+import { createTeacherRouter } from './teacher'
+import { createStudentRouter } from './student'
+import { createCourseRouter } from './course'
+import { createAvailabilityRouter } from './availability'
+import { createPackageRouter } from './package'
+import { createDeviceRouter } from './device'
 
 export interface RouteDependencies {
   teacherRepo: TeacherRepository
@@ -33,20 +41,17 @@ export interface RouteDependencies {
 export function createApiRouter(deps: RouteDependencies): Router {
   const router = Router()
 
-  // Mount route modules
+  // Mount route modules (Phase 0-2)
   router.use('/auth', createAuthRouter(deps))
   router.use('/invites', createInviteRouter(deps))
-
-  // TODO: Mount remaining route modules:
-  // - /me (teacher, student views)
-  // - /students
-  // - /courses
-  // - /availability
-  // - /packages
-  // - /teachers/:teacherId/slots
-  // - /teachers/:teacherId/bookable-days
-  // - /bookings
-  // - /devices
+  router.use('/bookings', createBookingRouter(deps))
+  router.use('/teachers', createSlotsRouter())
+  router.use('/me/teacher', createTeacherRouter(deps))
+  router.use('/students', createStudentRouter(deps))
+  router.use('/courses', createCourseRouter(deps))
+  router.use('/availability', createAvailabilityRouter(deps))
+  router.use('/packages', createPackageRouter(deps))
+  router.use('/me/devices', createDeviceRouter())
 
   return router
 }
