@@ -17,6 +17,7 @@
 		D000000F /* BookingRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000010 /* BookingRow.swift */; };
 		D0000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D0000012 /* Assets.xcassets */; };
 		D0000013 /* RabbitKit in Frameworks */ = {isa = PBXBuildFile; productRef = D0000014 /* RabbitKit */; };
+		D0000029 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000028 /* CalendarView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 		D0000010 /* BookingRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingRow.swift; sourceTree = "<group>"; };
 		D0000012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D0000015 /* Rabbit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rabbit.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0000028 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Calendar/CalendarView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -85,6 +87,7 @@
 			isa = PBXGroup;
 			children = (
 				D0000008 /* TodayView.swift */,
+				D0000028 /* CalendarView.swift */,
 				D000000A /* StudentListView.swift */,
 				D000000C /* ProfileView.swift */,
 				D000000E /* OnboardingView.swift */,
@@ -179,6 +182,7 @@
 				D0000003 /* AppEnvironment.swift in Sources */,
 				D0000005 /* MainTabView.swift in Sources */,
 				D0000007 /* TodayView.swift in Sources */,
+				D0000029 /* CalendarView.swift in Sources */,
 				D0000009 /* StudentListView.swift in Sources */,
 				D000000B /* ProfileView.swift in Sources */,
 				D000000D /* OnboardingView.swift in Sources */,
