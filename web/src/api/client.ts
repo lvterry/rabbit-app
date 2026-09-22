@@ -271,7 +271,19 @@ async function apiRequest<T>(
       }
       
       if (fixturePath) {
-        return loadFixture<T>(fixturePath)
+        const fixtureData = await loadFixture<any>(fixturePath)
+        
+        if (path.includes('/bookings/') && !path.includes('/bookable-days') && !path.includes('/slots')) {
+          if (fixtureData.ok && fixtureData.data && !fixtureData.data.booking) {
+            return {
+              ok: true,
+              data: { booking: fixtureData.data } as any,
+              meta: fixtureData.meta,
+            } as APIResponse<T>
+          }
+        }
+        
+        return fixtureData as APIResponse<T>
       }
     }
     
