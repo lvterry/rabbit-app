@@ -61,34 +61,65 @@ Configure API base URL in Xcode scheme:
 
 **Status:** iOS client wired and ready — waiting for Maya's backend endpoint.
 
-### Auth Path (Architect Decision — PR #16)
+### Auth Path (Architect Decision — PR #16, Maya Confirmed Contract)
 
 **Backend (Maya):**
 - Endpoint: `POST /v1/auth/dev/teacher`
-- Gate: `NODE_ENV=development` or `test` only; returns 404/403 in production/staging
-- Behavior: Seeds or looks up a teacher User record and returns **real** access + refresh JWTs
-- Response shape (expected):
+- Gate: `NODE_ENV=development` or `test` only; returns 404 in production/staging
+- Request body: Empty `{}`
+- Response shape (success envelope `{ ok, data, meta }`):
   ```json
   {
-    "accessToken": "eyJ...",
-    "refreshToken": "eyJ...",
-    "expiresIn": 900
+    "ok": true,
+    "data": {
+      "accessToken": "<jwt>",
+      "refreshToken": "<jwt>",
+      "expiresIn": 900,
+      "user": {
+        "userId": "...",
+        "nickname": "...",
+        "avatarUrl": "..."
+      },
+      "teacher": {
+        "teacherId": "...",
+        "userId": "...",
+        "name": "...",
+        "avatar": "...",
+        "bio": "...",
+        "timezone": "...",
+        "slotStepMinutes": 30,
+        "minLeadHours": 24,
+        "maxAdvanceDays": 90,
+        "freeCancelHours": 24,
+        "autoSettleHours": 48,
+        "undoCompleteDays": 7,
+        "maxReschedules": 3,
+        "status": "active"
+      }
+    },
+    "meta": { "requestId": "..." }
   }
   ```
-- iOS then calls `GET /v1/me` with Bearer token to fetch full User + Teacher profile
+- Teacher fields match `contracts/fixtures/auth/me-user-teacher.json` / `MeView` DTO
 - **Status:** NOT implemented yet; Maya owns this endpoint
 
 **iOS Client (Nina — THIS PR):**
-- ✅ `SessionStore.authenticateDevTeacher()` method implemented
+- ✅ `SessionStore.authenticateDevTeacher()` method implemented per Maya's contract
+- ✅ Calls `POST /v1/auth/dev/teacher` with empty body `{}`
+- ✅ Decodes response with `user` + `teacher` in one payload
+- ✅ Calls `SessionStore.setSession(accessToken:refreshToken:user:teacher:)` in one shot
+- ✅ No separate `GET /v1/me` call required
 - ✅ DEBUG-only UI entry on `OnboardingView` ("Dev: Sign in as seeded teacher")
 - ✅ Gated with `#if DEBUG` — never enabled in Release builds
+- ✅ Clear error message if endpoint returns 404/501
 - ✅ Uses real `SessionStore` → real `/v1/*` routes with real Principal
 - ✅ No DEMO_MODE login bypass, no mock repositories
 
 **Walkthrough Prerequisites:**
 1. Maya implements and merges `POST /v1/auth/dev/teacher` endpoint
-2. Mac with Xcode and iOS Simulator available
-3. Local backend stack running (docker-compose Postgres + API)
+2. API server running with `NODE_ENV=development` or `test`
+3. Mac with Xcode and iOS Simulator available
+4. Local backend stack running (docker-compose Postgres + pnpm dev)
 
 ### What Does NOT Pass This Gate
 
@@ -97,7 +128,7 @@ Configure API base URL in Xcode scheme:
 - ✘ Client-side fake login that bypasses real Principal
 - ✘ Canvas-only testing with MockRepository
 
-**Requirement:** iOS must authenticate against the **real API** and obtain a valid JWT that encodes a real `Principal` (teacher_id, student_id scope). Only then can booking lifecycle operations be tested end-to-end.
+**Requirement:** iOS must authenticate against the **real API** and obtain a valid JWT that encodes a real `Principal` (teacher_id scope). Only then can booking lifecycle operations be tested end-to-end.
 
 ---
 
@@ -114,8 +145,21 @@ Configure API base URL in Xcode scheme:
 
 **Expected:**
 - API request: `POST /v1/auth/dev/teacher` with empty JSON body `{}`
-- Response: `{ "accessToken": "...", "refreshToken": "...", "expiresIn": 900 }`
-- iOS calls `GET /v1/me` with Bearer token
+- Response (success envelope): 
+  ```json
+  {
+    "ok": true,
+    "data": {
+      "accessToken": "...",
+      "refreshToken": "...",
+      "expiresIn": 900,
+      "user": { "userId", "nickname", "avatarUrl" },
+      "teacher": { /* complete teacher profile */ }
+    }
+  }
+  ```
+- iOS calls `SessionStore.setSession(accessToken:refreshToken:user:teacher:)` in one shot
+- **No separate GET /v1/me call** — all data in auth response
 - SessionStore populated with real User + Teacher
 - App navigates to MainTabView (4-tab root)
 
@@ -126,6 +170,10 @@ Configure API base URL in Xcode scheme:
 - [ ] Dev auth button visible in DEBUG build only
 - [ ] Authentication succeeds (no error dialog)
 - [ ] MainTabView appears with Today tab
+
+**Error Handling:**
+- If endpoint returns 404/501: Error message "Dev teacher auth endpoint not available. Ensure API is running in development mode (NODE_ENV=development)."
+- This indicates Maya's endpoint not implemented or API not in development mode
 
 ---
 

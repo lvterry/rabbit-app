@@ -62,7 +62,7 @@ public final class SessionStore: ObservableObject {
     #if DEBUG
     /// Development-only teacher authentication for E2E testing
     /// Calls POST /v1/auth/dev/teacher (NODE_ENV=development|test only)
-    /// Returns real User access+refresh JWTs with real Principal
+    /// Returns real User access+refresh JWTs with real Principal + user/teacher data
     public func authenticateDevTeacher() async throws {
         // Get base URL from environment
         let baseURLString = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:8787"
@@ -76,7 +76,7 @@ public final class SessionStore: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Empty body for now; Maya's implementation may define seed selector
+        // Empty body per Maya's contract
         let emptyBody = "{}".data(using: .utf8)!
         request.httpBody = emptyBody
         
@@ -87,64 +87,46 @@ public final class SessionStore: ObservableObject {
             throw RabbitAPIError.invalidResponse
         }
         
-        if httpResponse.statusCode >= 400 {
+        // Handle endpoint not available (404/501) with clear error
+        if httpResponse.statusCode == 404 || httpResponse.statusCode == 501 {
             throw RabbitAPIError.serverError(
                 code: ErrorCode.notImplemented,
-                message: "Dev teacher auth endpoint not available (Maya implementing)",
+                message: "Dev teacher auth endpoint not available. Ensure API is running in development mode (NODE_ENV=development).",
                 retryable: false,
                 details: nil
             )
         }
         
-        // Decode response (expecting accessToken + refreshToken)
+        if httpResponse.statusCode >= 400 {
+            throw RabbitAPIError.serverError(
+                code: ErrorCode.unauthenticated,
+                message: "Dev teacher auth failed with status \(httpResponse.statusCode)",
+                retryable: false,
+                details: nil
+            )
+        }
+        
+        // Decode response per Maya's contract:
+        // data: { accessToken, refreshToken, expiresIn, user, teacher }
         struct DevAuthResponse: Decodable {
             let accessToken: String
             let refreshToken: String
-            let expiresIn: Int?
+            let expiresIn: Int
+            let user: User
+            let teacher: Teacher
         }
         
         let decoder = JSONDecoder()
         let envelope = try decoder.decode(APIResponse<DevAuthResponse>.self, from: data)
         let authResponse = envelope.data
         
-        // Store refresh token in keychain
-        keychain.saveRefreshToken(authResponse.refreshToken)
-        
-        // Set access token
-        self.accessToken = authResponse.accessToken
-        
-        // Fetch current user info to populate session
-        let meURL = baseURL.appendingPathComponent("v1/me")
-        var meRequest = URLRequest(url: meURL)
-        meRequest.httpMethod = "GET"
-        meRequest.setValue("Bearer \(authResponse.accessToken)", forHTTPHeaderField: "Authorization")
-        meRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let (meData, meResponse) = try await URLSession.shared.data(for: meRequest)
-        
-        guard let meHttpResponse = meResponse as? HTTPURLResponse,
-              meHttpResponse.statusCode < 400 else {
-            throw RabbitAPIError.invalidResponse
-        }
-        
-        let meEnvelope = try decoder.decode(APIResponse<MeView>.self, from: meData)
-        let meView = meEnvelope.data
-        
-        // Auth gate: only authenticate if user is a teacher with valid profile
-        guard meView.isTeacher, let teacher = meView.teacher else {
-            clearSession()
-            throw RabbitAPIError.serverError(
-                code: ErrorCode.forbidden,
-                message: "User is not a teacher",
-                retryable: false,
-                details: nil
-            )
-        }
-        
-        // Set session
-        self.currentUser = meView.user
-        self.teacher = teacher
-        self.isAuthenticated = true
+        // Set session in one shot (no separate GET /v1/me required)
+        setSession(
+            accessToken: authResponse.accessToken,
+            refreshToken: authResponse.refreshToken,
+            user: authResponse.user,
+            teacher: authResponse.teacher
+        )
     }
     #endif
     

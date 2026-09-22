@@ -91,11 +91,15 @@ For **real API integration** (Wave 1 Stabilization E2E or local development agai
 
 3. **Dev Teacher Authentication (DEBUG builds only):**
    - ⚠️ DEBUG builds include a **"Dev: Sign in as seeded teacher"** button on the Onboarding screen
-   - This calls `POST /v1/auth/dev/teacher` (requires `NODE_ENV=development|test` on API)
+   - This calls `POST /v1/auth/dev/teacher` with empty body `{}`
+   - Requires `NODE_ENV=development|test` on API server
+   - Response includes `{ accessToken, refreshToken, expiresIn, user, teacher }` in one payload
+   - SessionStore populated in one shot — no separate `/me` call required
    - Returns real User + Teacher JWTs with real Principal
    - **Maya must implement backend endpoint first** (Wave 1 Stabilization work)
    - Release builds never show this button (`#if DEBUG` gated)
    - **No DEMO_MODE login bypass** — this uses real auth flow via SessionStore
+   - Clear error message if endpoint returns 404/501 (not in development mode)
 
 4. **Production Authentication:**
    - ⚠️ **Sign in with Apple** (`POST /v1/auth/apple`) is not yet implemented (returns 501)
