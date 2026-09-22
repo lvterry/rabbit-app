@@ -107,25 +107,41 @@ public final class SessionStore: ObservableObject {
         }
         
         // Decode response per Maya's contract:
-        // data: { accessToken, refreshToken, expiresIn, user, teacher }
+        // data: { accessToken, refreshToken, expiresIn, user, teacher, isTeacher, students }
+        // Note: students field present but not required for teacher gate
         struct DevAuthResponse: Decodable {
             let accessToken: String
             let refreshToken: String
             let expiresIn: Int
             let user: User
-            let teacher: Teacher
+            let teacher: Teacher?
+            let isTeacher: Bool
+            // students field may be present but not decoded (not needed for teacher gate)
         }
         
         let decoder = JSONDecoder()
         let envelope = try decoder.decode(APIResponse<DevAuthResponse>.self, from: data)
         let authResponse = envelope.data
         
+        // Auth gate: only authenticate if user is a teacher with valid profile
+        // Same fail-closed logic as refreshAccessToken /me restore
+        guard authResponse.isTeacher, let teacher = authResponse.teacher else {
+            // Not a teacher or teacher profile missing - fail closed
+            clearSession()
+            throw RabbitAPIError.serverError(
+                code: ErrorCode.forbidden,
+                message: "User is not a teacher",
+                retryable: false,
+                details: nil
+            )
+        }
+        
         // Set session in one shot (no separate GET /v1/me required)
         setSession(
             accessToken: authResponse.accessToken,
             refreshToken: authResponse.refreshToken,
             user: authResponse.user,
-            teacher: authResponse.teacher
+            teacher: teacher
         )
     }
     #endif

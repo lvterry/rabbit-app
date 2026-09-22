@@ -95,7 +95,9 @@ Configure API base URL in Xcode scheme:
         "undoCompleteDays": 7,
         "maxReschedules": 3,
         "status": "active"
-      }
+      },
+      "isTeacher": true,
+      "students": []
     },
     "meta": { "requestId": "..." }
   }
@@ -106,8 +108,10 @@ Configure API base URL in Xcode scheme:
 **iOS Client (Nina — THIS PR):**
 - ✅ `SessionStore.authenticateDevTeacher()` method implemented per Maya's contract
 - ✅ Calls `POST /v1/auth/dev/teacher` with empty body `{}`
-- ✅ Decodes response with `user` + `teacher` in one payload
-- ✅ Calls `SessionStore.setSession(accessToken:refreshToken:user:teacher:)` in one shot
+- ✅ Decodes response with `user` + `teacher` + `isTeacher` + `students` in one payload
+- ✅ **Fail-closed gate:** Requires `isTeacher == true` and `teacher` present (same as refreshAccessToken)
+- ✅ Calls `SessionStore.setSession(accessToken:refreshToken:user:teacher:)` in one shot when gate passes
+- ✅ Calls `clearSession()` and throws error if not a teacher or teacher missing
 - ✅ No separate `GET /v1/me` call required
 - ✅ DEBUG-only UI entry on `OnboardingView` ("Dev: Sign in as seeded teacher")
 - ✅ Gated with `#if DEBUG` — never enabled in Release builds
@@ -154,11 +158,16 @@ Configure API base URL in Xcode scheme:
       "refreshToken": "...",
       "expiresIn": 900,
       "user": { "userId", "nickname", "avatarUrl" },
-      "teacher": { /* complete teacher profile */ }
+      "teacher": { /* complete teacher profile */ },
+      "isTeacher": true,
+      "students": []
     }
   }
   ```
-- iOS calls `SessionStore.setSession(accessToken:refreshToken:user:teacher:)` in one shot
+- iOS decodes `isTeacher` and `teacher` fields
+- **Auth gate:** Requires `isTeacher == true` AND `teacher` present (fail-closed, same as token refresh)
+- If gate fails: `clearSession()` and error "User is not a teacher"
+- If gate passes: `SessionStore.setSession(accessToken:refreshToken:user:teacher:)` in one shot
 - **No separate GET /v1/me call** — all data in auth response
 - SessionStore populated with real User + Teacher
 - App navigates to MainTabView (4-tab root)
