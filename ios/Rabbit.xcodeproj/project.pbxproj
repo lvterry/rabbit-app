@@ -18,6 +18,12 @@
 		D0000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D0000012 /* Assets.xcassets */; };
 		D0000013 /* RabbitKit in Frameworks */ = {isa = PBXBuildFile; productRef = D0000014 /* RabbitKit */; };
 		D0000029 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000028 /* CalendarView.swift */; };
+		D000002B /* AvailabilityManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D000002A /* AvailabilityManagementView.swift */; };
+		D000002D /* AddBookingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D000002C /* AddBookingView.swift */; };
+		D000002F /* BookingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D000002E /* BookingDetailView.swift */; };
+		D0000031 /* CourseManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000030 /* CourseManagementView.swift */; };
+		D0000033 /* AddStudentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000032 /* AddStudentView.swift */; };
+		D0000035 /* StudentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0000034 /* StudentDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +38,12 @@
 		D0000012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D0000015 /* Rabbit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rabbit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0000028 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Calendar/CalendarView.swift; sourceTree = "<group>"; };
+		D000002A /* AvailabilityManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Availability/AvailabilityManagementView.swift; sourceTree = "<group>"; };
+		D000002C /* AddBookingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bookings/AddBookingView.swift; sourceTree = "<group>"; };
+		D000002E /* BookingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bookings/BookingDetailView.swift; sourceTree = "<group>"; };
+		D0000030 /* CourseManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Courses/CourseManagementView.swift; sourceTree = "<group>"; };
+		D0000032 /* AddStudentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Students/AddStudentView.swift; sourceTree = "<group>"; };
+		D0000034 /* StudentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Students/StudentDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +100,12 @@
 			children = (
 				D0000008 /* TodayView.swift */,
 				D0000028 /* CalendarView.swift */,
+				D000002A /* AvailabilityManagementView.swift */,
+				D000002C /* AddBookingView.swift */,
+				D000002E /* BookingDetailView.swift */,
+				D0000030 /* CourseManagementView.swift */,
+				D0000032 /* AddStudentView.swift */,
+				D0000034 /* StudentDetailView.swift */,
 				D000000A /* StudentListView.swift */,
 				D000000C /* ProfileView.swift */,
 				D000000E /* OnboardingView.swift */,
@@ -183,6 +201,12 @@
 				D0000005 /* MainTabView.swift in Sources */,
 				D0000007 /* TodayView.swift in Sources */,
 				D0000029 /* CalendarView.swift in Sources */,
+				D000002B /* AvailabilityManagementView.swift in Sources */,
+				D000002D /* AddBookingView.swift in Sources */,
+				D000002F /* BookingDetailView.swift in Sources */,
+				D0000031 /* CourseManagementView.swift in Sources */,
+				D0000033 /* AddStudentView.swift in Sources */,
+				D0000035 /* StudentDetailView.swift in Sources */,
 				D0000009 /* StudentListView.swift in Sources */,
 				D000000B /* ProfileView.swift in Sources */,
 				D000000D /* OnboardingView.swift in Sources */,
