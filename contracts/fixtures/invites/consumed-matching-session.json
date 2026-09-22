@@ -1,11 +1,6 @@
 {
   "ok": true,
   "data": {
-    "token": "inv_consumed_matching",
-    "teacherName": "王老师",
-    "courseName": "西班牙语一对一",
-    "status": "Consumed",
-    "expiresAt": "2026-02-27T02:11:00Z",
     "alreadyAccepted": true,
     "redirectTo": "/"
   },

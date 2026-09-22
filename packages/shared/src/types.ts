@@ -233,20 +233,42 @@ export type StudentHomeView = {
   bound: boolean
 }
 
+// Student detail response (GET /v1/students/{studentId})
+// impl-guide.md §5.5
 export type StudentDetailView = {
-  studentId: string
-  studentName: string
-  contact: string | null
-  status: StudentStatus
-  boundAt: string | null
-  userEmail: string | null
-  userNickname: string | null
-  nextBooking: BookingView | null
-  packages: PackageView[]
-  totalRemaining: number
-  totalReserved: number
-  totalAvailable: number
-  upcomingBookings: BookingView[]
+  student: {
+    studentId: string
+    name: string
+    contact: string | null
+    status: StudentStatus
+    bound: boolean
+    boundName: string | null
+    boundEmail: string | null
+    boundAt: string | null
+  }
+  courses: Array<{
+    courseId: string
+    courseName: string
+    durationMinutes: number
+    courseStatus: CourseStatus
+    remaining: number
+    reserved: number
+    available: number
+  }>
+  packages: Array<{
+    packageId: string
+    courseId: string
+    courseName: string
+    purchasedSessions: number
+    remainingSessions: number
+    status: PackageStatus
+    createdAt: string
+    createdDate: string
+  }>
+  transactions: PackageTransactionView[]
+  upcoming: BookingView[]
+  history: Array<BookingView & { status: BookingStatus }>
+  invite: InviteView | null
 }
 
 // ============================================================================
@@ -267,16 +289,18 @@ export type PackageView = {
 export type PackageTransactionView = {
   transactionId: string
   packageId: string
+  courseId: string
+  courseName: string
   type: PackageTransactionType
-  typeLabel: string
+  label: string
   amount: number
-  before: number
-  after: number
+  amountText: string
+  beforeSessions: number
+  afterSessions: number
+  balanceText: string
   note: string | null
   createdAt: string
-  dateLabel: string
-  bookingId: string | null
-  sessionId: string | null
+  createdLabel: string
 }
 
 // ============================================================================
@@ -343,13 +367,27 @@ export type InviteView = {
   url: string
 }
 
-export type InvitePreview = {
-  token: string
-  teacherName: string
-  courseName: string
-  status: StudentInviteStatus
+// Pending invite preview (GET /v1/invites/{token} when Pending)
+// impl-guide.md §5.5
+export type PendingInvitePreview = {
+  teacher: {
+    teacherId: string
+    name: string
+    avatarUrl: string | null
+  }
+  studentName: string
+  courses: Array<{
+    courseId: string
+    courseName: string
+    remaining: number
+  }>
   expiresAt: string
-  alreadyAccepted: boolean
+}
+
+// Consumed invite with matching session (GET /v1/invites/{token} when already accepted)
+// impl-guide.md §5.5
+export type AcceptedInviteResponse = {
+  alreadyAccepted: true
   redirectTo: string
 }
 
@@ -433,7 +471,7 @@ export type CompleteBookingRequest = Record<string, never>
 
 export type CreatePackageRequest = {
   courseId: string
-  purchasedSessions: number
+  sessions: number
   note?: string
 }
 
@@ -473,8 +511,9 @@ export type CreateAvailabilityExceptionRequest = {
 export type CreateStudentRequest = {
   name: string
   contact?: string
-  courseId: string
-  initialSessions: number
+  courseId?: string
+  initialSessions?: number
+  note?: string
 }
 
 export type UpdateStudentRequest = {

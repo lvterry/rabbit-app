@@ -5,6 +5,63 @@
 **Branch:** `cursor/contract-bootstrap-f3c4`  
 **Pull Request:** #1
 
+## ✅ Third Contract-Correction Pass Complete (Four Critical Blockers)
+
+Before merge, fixed exactly four contract blockers against CURRENT `docs/impl-guide.md` §5:
+
+### Blocker 1: Invite Response Contract ✅
+
+**Issue:** Forced two different API responses into one `InvitePreview` type.
+
+**Resolution per impl-guide.md §5.5:**
+- Created separate types for distinct responses:
+  - `PendingInvitePreview` for GET /v1/invites/{token} when Pending: `{ teacher:{teacherId,name,avatarUrl}, studentName, courses:[{courseId,courseName,remaining}], expiresAt }`
+  - `AcceptedInviteResponse` for consumed + matching session: `{ alreadyAccepted:true, redirectTo:"/" }`
+- Updated schemas: `pendingInvitePreviewSchema`, `acceptedInviteResponseSchema`
+- Updated fixtures: `invites/pending.json`, `invites/consumed-matching-session.json`
+- Updated validate-fixtures mapping and StudentRepository port
+
+### Blocker 2: Student Detail Response ✅
+
+**Issue:** Flattened `StudentDetailView` didn't match documented API shape.
+
+**Resolution per impl-guide.md §5.5 GET /v1/students/{studentId}:**
+- Restructured to exact documented shape:
+  ```
+  { student:{studentId,name,contact,status,bound,boundName,boundEmail,boundAt},
+    courses:[{courseId,courseName,durationMinutes,courseStatus,remaining,reserved,available}],
+    packages:[{packageId,courseId,courseName,purchasedSessions,remainingSessions,status,createdAt,createdDate}],
+    transactions:[tx…], upcoming:[brief], history:[{…brief,status}], invite|null }
+  ```
+- Used exact field names from docs: `bound` not `hasBoundAccount`, `name` not `studentName`
+- Updated type, schema, and fixture `students/student-detail.json`
+
+### Blocker 3: Package Contracts ✅
+
+**Issue:** Wrong field names in request and transaction view.
+
+**Resolution per impl-guide.md §5.6:**
+- `CreatePackageRequest`: Changed `purchasedSessions` → `sessions` to match POST /v1/students/{studentId}/packages body
+- `PackageTransactionView`: Updated to exact tx shape with correct field names:
+  - Added: `courseId`, `courseName`, `amountText`, `balanceText`
+  - Renamed: `typeLabel` → `label`, `before` → `beforeSessions`, `after` → `afterSessions`, `dateLabel` → `createdLabel`
+  - Removed: `bookingId`, `sessionId` (not in documented tx shape)
+
+### Blocker 4: CreateStudentRequest ✅
+
+**Issue:** Made optional fields required.
+
+**Resolution per impl-guide.md §5.5 POST /v1/students:**
+- Made `courseId` and `initialSessions` optional (was required)
+- Added `note?: string` field (was missing)
+- Exact shape: `{ name, contact?, courseId?, initialSessions?, note? }`
+
+**Verification:**
+- ✅ `pnpm typecheck` passes
+- ✅ `pnpm test:contract` passes (all 24 fixtures validate against real schemas)
+
+---
+
 ## ✅ Second Contract-Correction Pass Complete
 
 This PR underwent TWO correction passes. All issues from both reviews have been addressed.

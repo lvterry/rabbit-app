@@ -231,32 +231,76 @@ export const packageViewSchema = z.object({
 export const packageTransactionViewSchema = z.object({
   transactionId: z.string().uuid(),
   packageId: z.string().uuid(),
+  courseId: z.string().uuid(),
+  courseName: z.string(),
   type: packageTransactionTypeSchema,
-  typeLabel: z.string(),
+  label: z.string(),
   amount: z.number().int(),
-  before: z.number().int().nonnegative(),
-  after: z.number().int().nonnegative(),
+  amountText: z.string(),
+  beforeSessions: z.number().int().nonnegative(),
+  afterSessions: z.number().int().nonnegative(),
+  balanceText: z.string(),
   note: z.string().nullable(),
   createdAt: z.string().datetime(),
-  dateLabel: z.string(),
-  bookingId: z.string().uuid().nullable(),
-  sessionId: z.string().uuid().nullable(),
+  createdLabel: z.string(),
 })
 
-export const studentDetailViewSchema = z.object({
+// Invite view schema (for Student Detail response)
+export const inviteViewSchema = z.object({
+  inviteId: z.string().uuid(),
+  token: z.string(),
   studentId: z.string().uuid(),
+  teacherId: z.string().uuid(),
+  teacherName: z.string(),
   studentName: z.string(),
-  contact: z.string().nullable(),
-  status: studentStatusSchema,
-  boundAt: z.string().datetime().nullable(),
-  userEmail: z.string().email().nullable(),
-  userNickname: z.string().nullable(),
-  nextBooking: bookingViewSchema.nullable(),
-  packages: z.array(packageViewSchema),
-  totalRemaining: z.number().int().nonnegative(),
-  totalReserved: z.number().int().nonnegative(),
-  totalAvailable: z.number().int(),
-  upcomingBookings: z.array(bookingViewSchema),
+  courseName: z.string(),
+  status: studentInviteStatusSchema,
+  expiresAt: z.string().datetime(),
+  consumedAt: z.string().datetime().nullable(),
+  consumedByUserId: z.string().uuid().nullable(),
+  createdAt: z.string().datetime(),
+  url: z.string().url(),
+})
+
+// Student detail response schema (GET /v1/students/{studentId})
+export const studentDetailViewSchema = z.object({
+  student: z.object({
+    studentId: z.string().uuid(),
+    name: z.string(),
+    contact: z.string().nullable(),
+    status: studentStatusSchema,
+    bound: z.boolean(),
+    boundName: z.string().nullable(),
+    boundEmail: z.string().nullable(),
+    boundAt: z.string().datetime().nullable(),
+  }),
+  courses: z.array(
+    z.object({
+      courseId: z.string().uuid(),
+      courseName: z.string(),
+      durationMinutes: z.number().int().positive(),
+      courseStatus: courseStatusSchema,
+      remaining: z.number().int().nonnegative(),
+      reserved: z.number().int().nonnegative(),
+      available: z.number().int(),
+    })
+  ),
+  packages: z.array(
+    z.object({
+      packageId: z.string().uuid(),
+      courseId: z.string().uuid(),
+      courseName: z.string(),
+      purchasedSessions: z.number().int().positive(),
+      remainingSessions: z.number().int().nonnegative(),
+      status: packageStatusSchema,
+      createdAt: z.string().datetime(),
+      createdDate: z.string(),
+    })
+  ),
+  transactions: z.array(packageTransactionViewSchema),
+  upcoming: z.array(bookingViewSchema),
+  history: z.array(bookingViewSchema.and(z.object({ status: bookingStatusSchema }))),
+  invite: inviteViewSchema.nullable(),
 })
 
 export const courseViewSchema = z.object({
@@ -295,29 +339,27 @@ export const availabilityExceptionViewSchema = z.object({
   isAllDay: z.boolean(),
 })
 
-export const inviteViewSchema = z.object({
-  inviteId: z.string().uuid(),
-  token: z.string(),
-  studentId: z.string().uuid(),
-  teacherId: z.string().uuid(),
-  teacherName: z.string(),
+// Pending invite preview schema (GET /v1/invites/{token} when Pending)
+export const pendingInvitePreviewSchema = z.object({
+  teacher: z.object({
+    teacherId: z.string().uuid(),
+    name: z.string(),
+    avatarUrl: z.string().nullable(),
+  }),
   studentName: z.string(),
-  courseName: z.string(),
-  status: studentInviteStatusSchema,
+  courses: z.array(
+    z.object({
+      courseId: z.string().uuid(),
+      courseName: z.string(),
+      remaining: z.number().int().nonnegative(),
+    })
+  ),
   expiresAt: z.string().datetime(),
-  consumedAt: z.string().datetime().nullable(),
-  consumedByUserId: z.string().uuid().nullable(),
-  createdAt: z.string().datetime(),
-  url: z.string().url(),
 })
 
-export const invitePreviewSchema = z.object({
-  token: z.string(),
-  teacherName: z.string(),
-  courseName: z.string(),
-  status: studentInviteStatusSchema,
-  expiresAt: z.string().datetime(),
-  alreadyAccepted: z.boolean(),
+// Consumed invite with matching session schema
+export const acceptedInviteResponseSchema = z.object({
+  alreadyAccepted: z.literal(true),
   redirectTo: z.string(),
 })
 
@@ -400,7 +442,7 @@ export const rescheduleBookingRequestSchema = z.object({
 
 export const createPackageRequestSchema = z.object({
   courseId: z.string().uuid(),
-  purchasedSessions: z.number().int().positive(),
+  sessions: z.number().int().positive(),
   note: z.string().optional(),
 })
 
@@ -440,8 +482,9 @@ export const createAvailabilityExceptionRequestSchema = z.object({
 export const createStudentRequestSchema = z.object({
   name: z.string().min(1).max(100),
   contact: z.string().optional(),
-  courseId: z.string().uuid(),
-  initialSessions: z.number().int().positive(),
+  courseId: z.string().uuid().optional(),
+  initialSessions: z.number().int().positive().optional(),
+  note: z.string().optional(),
 })
 
 export const updateStudentRequestSchema = z.object({

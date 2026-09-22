@@ -10,7 +10,6 @@ import type {
   UpdateStudentRequest,
   StudentStatus,
   InviteView,
-  InvitePreview,
   Principal,
 } from '@rabbit/shared'
 
@@ -71,9 +70,10 @@ export interface StudentRepository {
   createInvite(studentId: string): Promise<InviteView>
 
   /**
-   * Get invite by token
+   * Get invite by token (returns internal invite entity)
+   * Controller maps to PendingInvitePreview or AcceptedInviteResponse based on state
    */
-  getInviteByToken(token: string): Promise<InvitePreview | null>
+  getInviteByToken(token: string): Promise<InviteView | null>
 
   /**
    * Consume invite (bind student to session)
