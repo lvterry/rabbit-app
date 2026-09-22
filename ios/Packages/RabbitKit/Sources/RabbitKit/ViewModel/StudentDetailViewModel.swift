@@ -27,8 +27,8 @@ public final class StudentDetailViewModel {
             detail = try await studentRepo.studentDetail(id: studentId)
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -38,8 +38,8 @@ public final class StudentDetailViewModel {
             await refresh()
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -49,8 +49,8 @@ public final class StudentDetailViewModel {
             await refresh()
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
 }

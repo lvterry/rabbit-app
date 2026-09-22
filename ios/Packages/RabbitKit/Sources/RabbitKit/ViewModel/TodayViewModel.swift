@@ -25,8 +25,8 @@ public final class TodayViewModel {
             day = try await repo.teacherDay(date: nil)
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -39,8 +39,8 @@ public final class TodayViewModel {
             day = try await repo.teacherDay(date: date)
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
 }

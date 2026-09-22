@@ -28,8 +28,8 @@ public final class BookingDetailViewModel {
             booking = try await repo.booking(id: bookingId)
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -42,8 +42,8 @@ public final class BookingDetailViewModel {
             booking = try await repo.completeBooking(id: bookingId)
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -56,8 +56,8 @@ public final class BookingDetailViewModel {
             booking = try await repo.undoCompletion(id: bookingId)
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -70,8 +70,8 @@ public final class BookingDetailViewModel {
             booking = try await repo.cancelBooking(id: bookingId, reason: reason)
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -84,8 +84,8 @@ public final class BookingDetailViewModel {
             booking = try await repo.rescheduleBooking(id: bookingId, newStartAt: newStartAt)
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -98,8 +98,8 @@ public final class BookingDetailViewModel {
             booking = try await repo.settleBooking(id: bookingId, action: action)
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
 }

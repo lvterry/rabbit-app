@@ -25,8 +25,8 @@ public final class AvailabilityViewModel {
             availability = try await repo.availability(includePast: false)
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -36,8 +36,8 @@ public final class AvailabilityViewModel {
             await refresh()
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -47,8 +47,8 @@ public final class AvailabilityViewModel {
             await refresh()
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -58,8 +58,8 @@ public final class AvailabilityViewModel {
             await refresh()
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -75,8 +75,8 @@ public final class AvailabilityViewModel {
             await refresh()
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -86,8 +86,8 @@ public final class AvailabilityViewModel {
             await refresh()
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
 }

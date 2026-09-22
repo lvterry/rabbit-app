@@ -25,8 +25,8 @@ public final class CourseListViewModel {
             courses = try await repo.courses(includeArchived: includeArchived)
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -40,8 +40,8 @@ public final class CourseListViewModel {
             await refresh()
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -51,8 +51,8 @@ public final class CourseListViewModel {
             await refresh()
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
 }
