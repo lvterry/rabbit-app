@@ -20,7 +20,7 @@ import type {
   BookingRepository,
   PackageRepository,
 } from '../ports'
-import { createSuccessEnvelope, AppError } from '../http'
+import { createSuccessEnvelope, AppError, asyncHandler } from '../http'
 import { ErrorCode } from '@rabbit/shared'
 import { authMiddleware, requireAuth } from '../middleware'
 import { computeSlots, computeBookableDays } from '../domain/slot'
@@ -41,7 +41,7 @@ export function createSlotsRouter(deps: {
    * Get available time slots for a specific date
    * View derived from Principal capability (never trust client view parameter)
    */
-  router.get('/:teacherId/slots', authMiddleware, requireAuth, async (req, res) => {
+  router.get('/:teacherId/slots', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const { teacherId } = req.params
     const { courseId, date } = req.query
     const principal = req.principal
@@ -163,7 +163,7 @@ export function createSlotsRouter(deps: {
         req.requestId
       )
     )
-  })
+  }))
 
   /**
    * GET /v1/teachers/:teacherId/bookable-days
@@ -171,7 +171,7 @@ export function createSlotsRouter(deps: {
    * Get days with available slots in a date range
    * Must fetch entire range in one call (not per-day)
    */
-  router.get('/:teacherId/bookable-days', authMiddleware, requireAuth, async (req, res) => {
+  router.get('/:teacherId/bookable-days', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const { teacherId } = req.params
     const { courseId, from, to } = req.query
     const principal = req.principal
@@ -271,7 +271,7 @@ export function createSlotsRouter(deps: {
         req.requestId
       )
     )
-  })
+  }))
 
   return router
 }

@@ -6,7 +6,7 @@
 
 import { Router } from 'express'
 import type { Pool } from 'pg'
-import { createSuccessEnvelope, AppError } from '../http'
+import { createSuccessEnvelope, AppError, asyncHandler } from '../http'
 import { ErrorCode } from '@rabbit/shared'
 import { authMiddleware, requireAuth } from '../middleware'
 import { DeviceManager } from '../notifications/deviceManager'
@@ -29,7 +29,7 @@ export function createDeviceRouter(pool: Pool): Router {
    * - Same token再上報 → upsert / refresh lastSeenAt
    * - Token換User → 原owner解綁後綁定新User
    */
-  router.post('/', authMiddleware, requireAuth, async (req, res) => {
+  router.post('/', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const { platform, token, environment } = req.body
     const principal = req.principal
 
@@ -62,7 +62,7 @@ export function createDeviceRouter(pool: Pool): Router {
         req.requestId
       )
     )
-  })
+  }))
 
   return router
 }

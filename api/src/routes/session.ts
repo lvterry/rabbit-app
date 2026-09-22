@@ -10,7 +10,7 @@
 
 import { Router } from 'express'
 import type { TeacherRepository, StudentRepository, BookingRepository, PackageRepository } from '../ports'
-import { createSuccessEnvelope, AppError } from '../http'
+import { createSuccessEnvelope, AppError, asyncHandler } from '../http'
 import { ErrorCode } from '@rabbit/shared'
 import { authMiddleware, requireAuth } from '../middleware'
 
@@ -27,7 +27,7 @@ export function createSessionRouter(deps: {
    * 
    * Get current session info
    */
-  router.get('/me', authMiddleware, requireAuth, async (req, res) => {
+  router.get('/me', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const principal = req.principal
 
     if (principal.kind === 'User') {
@@ -84,14 +84,14 @@ export function createSessionRouter(deps: {
         )
       )
     }
-  })
+  }))
 
   /**
    * GET /v1/meta
    * 
    * Get session capabilities
    */
-  router.get('/meta', authMiddleware, requireAuth, async (req, res) => {
+  router.get('/meta', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const principal = req.principal
 
     let canActAsTeacher = false
@@ -122,7 +122,7 @@ export function createSessionRouter(deps: {
         req.requestId
       )
     )
-  })
+  }))
 
   /**
    * GET /v1/me/teacher-day
@@ -130,7 +130,7 @@ export function createSessionRouter(deps: {
    * Get teacher's day view (today's bookings)
    * §12.8 Phase 0-2
    */
-  router.get('/me/teacher-day', authMiddleware, requireAuth, async (req, res) => {
+  router.get('/me/teacher-day', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const principal = req.principal
 
     if (principal.kind !== 'User' || !principal.userId) {
@@ -157,7 +157,7 @@ export function createSessionRouter(deps: {
         req.requestId
       )
     )
-  })
+  }))
 
   /**
    * GET /v1/me/teacher-calendar
@@ -165,7 +165,7 @@ export function createSessionRouter(deps: {
    * Get teacher's calendar view (month bookings)
    * §12.8 Phase 0-2
    */
-  router.get('/me/teacher-calendar', authMiddleware, requireAuth, async (req, res) => {
+  router.get('/me/teacher-calendar', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const principal = req.principal
     const { month } = req.query // YYYY-MM format
 
@@ -209,7 +209,7 @@ export function createSessionRouter(deps: {
         req.requestId
       )
     )
-  })
+  }))
 
   /**
    * GET /v1/me/teacher-upcoming
@@ -217,7 +217,7 @@ export function createSessionRouter(deps: {
    * Get teacher's upcoming bookings list
    * §12.8 Phase 0-2
    */
-  router.get('/me/teacher-upcoming', authMiddleware, requireAuth, async (req, res) => {
+  router.get('/me/teacher-upcoming', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const principal = req.principal
     const { limit = '20', offset = '0' } = req.query
 
@@ -252,7 +252,7 @@ export function createSessionRouter(deps: {
         req.requestId
       )
     )
-  })
+  }))
 
   /**
    * GET /v1/me/student-home
@@ -262,7 +262,7 @@ export function createSessionRouter(deps: {
    * 
    * For User principals, requires teacherId query param to resolve student binding
    */
-  router.get('/me/student-home', authMiddleware, requireAuth, async (req, res) => {
+  router.get('/me/student-home', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const principal = req.principal
     const { teacherId: queryTeacherId } = req.query
 
@@ -316,7 +316,7 @@ export function createSessionRouter(deps: {
         req.requestId
       )
     )
-  })
+  }))
 
   /**
    * GET /v1/me/student-bookings
@@ -326,7 +326,7 @@ export function createSessionRouter(deps: {
    * 
    * For User principals, requires teacherId query param to resolve student binding
    */
-  router.get('/me/student-bookings', authMiddleware, requireAuth, async (req, res) => {
+  router.get('/me/student-bookings', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const principal = req.principal
     const { teacherId: queryTeacherId, limit = '20', offset = '0' } = req.query
 
@@ -372,7 +372,7 @@ export function createSessionRouter(deps: {
         req.requestId
       )
     )
-  })
+  }))
 
   return router
 }

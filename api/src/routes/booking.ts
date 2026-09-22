@@ -108,7 +108,7 @@ export function createBookingRouter(deps: {
    * 
    * Get booking detail with authorization check
    */
-  router.get('/:bookingId', authMiddleware, requireAuth, async (req, res) => {
+  router.get('/:bookingId', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const { bookingId } = req.params
     const principal = req.principal
 
@@ -147,7 +147,7 @@ export function createBookingRouter(deps: {
     }
 
     res.json(createSuccessEnvelope({ booking }, req.requestId))
-  })
+  }))
 
   /**
    * POST /v1/bookings/:bookingId/completion
@@ -155,7 +155,7 @@ export function createBookingRouter(deps: {
    * Complete booking (teacher only)
    * Requires: Idempotency-Key header
    */
-  router.post('/:bookingId/completion', authMiddleware, requireAuth, requireIdempotencyKey, async (req, res) => {
+  router.post('/:bookingId/completion', authMiddleware, requireAuth, requireIdempotencyKey, asyncHandler(async (req, res) => {
     const { bookingId } = req.params
     const principal = req.principal
     const idempotencyKey = (req as any).idempotencyKey
@@ -163,7 +163,7 @@ export function createBookingRouter(deps: {
     const result = await deps.bookingRepo.complete(bookingId, principal, idempotencyKey)
 
     res.json(createSuccessEnvelope(result, req.requestId))
-  })
+  }))
 
   /**
    * DELETE /v1/bookings/:bookingId/completion
@@ -171,7 +171,7 @@ export function createBookingRouter(deps: {
    * Undo completion (teacher only, within undo window)
    * REQUIRES: Idempotency-Key header (no fallback)
    */
-  router.delete('/:bookingId/completion', authMiddleware, requireAuth, requireIdempotencyKey, async (req, res) => {
+  router.delete('/:bookingId/completion', authMiddleware, requireAuth, requireIdempotencyKey, asyncHandler(async (req, res) => {
     const { bookingId } = req.params
     const principal = req.principal
     const idempotencyKey = (req as any).idempotencyKey
@@ -179,7 +179,7 @@ export function createBookingRouter(deps: {
     const result = await deps.bookingRepo.undoCompletion(bookingId, principal, idempotencyKey)
 
     res.json(createSuccessEnvelope(result, req.requestId))
-  })
+  }))
 
   /**
    * POST /v1/bookings/:bookingId/cancellation
@@ -187,7 +187,7 @@ export function createBookingRouter(deps: {
    * Cancel booking (teacher or student)
    * Requires: Idempotency-Key header
    */
-  router.post('/:bookingId/cancellation', authMiddleware, requireAuth, requireIdempotencyKey, async (req, res) => {
+  router.post('/:bookingId/cancellation', authMiddleware, requireAuth, requireIdempotencyKey, asyncHandler(async (req, res) => {
     const { bookingId } = req.params
     const { reason } = req.body
     const principal = req.principal
@@ -196,7 +196,7 @@ export function createBookingRouter(deps: {
     const result = await deps.bookingRepo.cancel(bookingId, principal, idempotencyKey)
 
     res.json(createSuccessEnvelope(result, req.requestId))
-  })
+  }))
 
   /**
    * POST /v1/bookings/:bookingId/reschedule
@@ -204,7 +204,7 @@ export function createBookingRouter(deps: {
    * Reschedule booking to new time (teacher or student)
    * Requires: Idempotency-Key header
    */
-  router.post('/:bookingId/reschedule', authMiddleware, requireAuth, requireIdempotencyKey, async (req, res) => {
+  router.post('/:bookingId/reschedule', authMiddleware, requireAuth, requireIdempotencyKey, asyncHandler(async (req, res) => {
     const { bookingId } = req.params
     const { newStartAt } = req.body
     const principal = req.principal
@@ -213,7 +213,7 @@ export function createBookingRouter(deps: {
     const result = await deps.bookingRepo.reschedule(bookingId, { newStartAt }, principal, idempotencyKey)
 
     res.json(createSuccessEnvelope(result, req.requestId))
-  })
+  }))
 
   return router
 }

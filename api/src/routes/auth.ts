@@ -14,7 +14,7 @@
 
 import { Router } from 'express'
 import type { TeacherRepository, StudentRepository } from '../ports'
-import { createSuccessEnvelope } from '../http'
+import { createSuccessEnvelope, AppError, asyncHandler } from '../http'
 import { authMiddleware, requireAuth } from '../middleware'
 import {
   generateUserAccessToken,
@@ -24,7 +24,6 @@ import {
   verifyRefreshToken,
 } from '../auth'
 import { ErrorCode } from '@rabbit/shared'
-import { AppError } from '../http'
 
 export function createAuthRouter(deps: {
   teacherRepo: TeacherRepository
@@ -44,7 +43,7 @@ export function createAuthRouter(deps: {
    * - Create or find user by apple_id
    * - Issue real User session tokens
    */
-  router.post('/apple', async (req, res) => {
+  router.post('/apple', asyncHandler(async (req, res) => {
     // Hard fail with 501 Not Implemented - no silent mock success
     res.status(501).json({
       ok: false,
@@ -57,7 +56,7 @@ export function createAuthRouter(deps: {
       },
       requestId: req.requestId,
     })
-  })
+  }))
 
   /**
    * POST /v1/auth/email/request
@@ -65,7 +64,7 @@ export function createAuthRouter(deps: {
    * Request magic link for email authentication
    * Used for student account upgrade or teacher alternative login
    */
-  router.post('/email/request', async (req, res) => {
+  router.post('/email/request', asyncHandler(async (req, res) => {
     const { email, inviteToken } = req.body
 
     // TODO: Generate magic link token
@@ -80,21 +79,21 @@ export function createAuthRouter(deps: {
         req.requestId
       )
     )
-  })
+  }))
 
   /**
    * POST /v1/auth/email/verify
    * 
    * Verify magic link token and create/upgrade session
    */
-  router.post('/email/verify', async (req, res) => {
+  router.post('/email/verify', asyncHandler(async (req, res) => {
     const { token } = req.body
 
     // TODO: Verify magic link token
     // TODO: Create or upgrade user account
 
     throw new AppError(ErrorCode.INTERNAL, 'Email verification not yet implemented')
-  })
+  }))
 
   /**
    * POST /v1/auth/refresh
@@ -104,7 +103,7 @@ export function createAuthRouter(deps: {
    * Web: Reads refresh token from HttpOnly cookie
    * iOS: Accepts refresh token in request body
    */
-  router.post('/refresh', async (req, res) => {
+  router.post('/refresh', asyncHandler(async (req, res) => {
     // Try cookie first (Web), then body (iOS)
     const refreshToken = req.cookies?.rb_refresh || req.body?.refreshToken
 
@@ -138,14 +137,14 @@ export function createAuthRouter(deps: {
         req.requestId
       )
     )
-  })
+  }))
 
   /**
    * GET /v1/me
    * 
    * Get current user info (requires authentication)
    */
-  router.get('/me', authMiddleware, requireAuth, async (req, res) => {
+  router.get('/me', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const principal = req.principal
 
     if (principal.kind === 'User') {
@@ -182,7 +181,7 @@ export function createAuthRouter(deps: {
     } else {
       throw new AppError(ErrorCode.UNAUTHENTICATED)
     }
-  })
+  }))
 
   /**
    * GET /v1/meta

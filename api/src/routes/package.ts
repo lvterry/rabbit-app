@@ -6,7 +6,7 @@
 
 import { Router } from 'express'
 import type { PackageRepository, TeacherRepository } from '../ports'
-import { createSuccessEnvelope, AppError } from '../http'
+import { createSuccessEnvelope, AppError, asyncHandler } from '../http'
 import { ErrorCode } from '@rabbit/shared'
 import { authMiddleware, requireAuth } from '../middleware'
 
@@ -17,7 +17,7 @@ export function createPackageRouter(deps: {
   const router = Router()
 
   // §12.6: POST /v1/students/:studentId/packages
-  router.post('/students/:studentId/packages', authMiddleware, requireAuth, async (req, res) => {
+  router.post('/students/:studentId/packages', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const { courseId, sessions, note } = req.body
     const principal = req.principal
     
@@ -40,10 +40,10 @@ export function createPackageRouter(deps: {
     )
     const balance = await deps.packageRepo.getBalance(req.params.studentId, courseId)
     res.json(createSuccessEnvelope({ package: pkg, balance }, req.requestId))
-  })
+  }))
 
   // §12.6: POST /v1/packages/:packageId/transactions
-  router.post('/packages/:packageId/transactions', authMiddleware, requireAuth, async (req, res) => {
+  router.post('/packages/:packageId/transactions', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const { mode, sessions, type, note } = req.body
     await deps.packageRepo.addTransaction(
       req.params.packageId,
@@ -52,25 +52,25 @@ export function createPackageRouter(deps: {
     )
     const pkg = await deps.packageRepo.findById(req.params.packageId)
     res.json(createSuccessEnvelope({ package: pkg }, req.requestId))
-  })
+  }))
 
   // §12.6: POST /v1/packages/:packageId/archival
-  router.post('/packages/:packageId/archival', authMiddleware, requireAuth, async (req, res) => {
+  router.post('/packages/:packageId/archival', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const { archived } = req.body
     const pkg = archived
       ? await deps.packageRepo.archive(req.params.packageId)
       : await deps.packageRepo.restore(req.params.packageId)
     res.json(createSuccessEnvelope({ package: pkg }, req.requestId))
-  })
+  }))
 
   // §12.6: GET /v1/students/:studentId/transactions
-  router.get('/students/:studentId/transactions', authMiddleware, requireAuth, async (req, res) => {
+  router.get('/students/:studentId/transactions', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const transactions = await deps.packageRepo.listTransactionsByStudent(req.params.studentId)
     res.json(createSuccessEnvelope({ items: transactions, hasMore: false }, req.requestId))
-  })
+  }))
 
   // §12.6: GET /v1/me/transactions
-  router.get('/me/transactions', authMiddleware, requireAuth, async (req, res) => {
+  router.get('/me/transactions', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const principal = req.principal
 
     // Teacher path: User with teacher capability
@@ -97,7 +97,7 @@ export function createPackageRouter(deps: {
 
     const transactions = await deps.packageRepo.listTransactionsByStudent(studentId)
     res.json(createSuccessEnvelope({ items: transactions, hasMore: false }, req.requestId))
-  })
+  }))
 
   return router
 }

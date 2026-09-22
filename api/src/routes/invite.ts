@@ -11,7 +11,7 @@
 
 import { Router } from 'express'
 import type { StudentRepository, TeacherRepository, CourseRepository } from '../ports'
-import { createSuccessEnvelope, AppError } from '../http'
+import { createSuccessEnvelope, AppError, asyncHandler } from '../http'
 import { ErrorCode } from '@rabbit/shared'
 import { authMiddleware, requireAuth } from '../middleware'
 import {
@@ -38,7 +38,7 @@ export function createInviteRouter(deps: {
    * - Consumed + no session / wrong session: Error INVITE_CONSUMED (no identity leak)
    * - Expired / Revoked: Error
    */
-  router.get('/:token', authMiddleware, async (req, res) => {
+  router.get('/:token', authMiddleware, asyncHandler(async (req, res) => {
     const { token } = req.params
     const principal = req.principal
 
@@ -112,7 +112,7 @@ export function createInviteRouter(deps: {
         req.requestId
       )
     )
-  })
+  }))
 
   /**
    * POST /v1/invites/:token/accept
@@ -125,7 +125,7 @@ export function createInviteRouter(deps: {
    * 
    * Idempotent: If already consumed by this principal, return same result
    */
-  router.post('/:token/accept', authMiddleware, async (req, res) => {
+  router.post('/:token/accept', authMiddleware, asyncHandler(async (req, res) => {
     const { token } = req.params
     const principal = req.principal
 
@@ -215,7 +215,7 @@ export function createInviteRouter(deps: {
         req.requestId
       )
     )
-  })
+  }))
 
   /**
    * POST /v1/invites/:inviteId/revoke
@@ -223,7 +223,7 @@ export function createInviteRouter(deps: {
    * Revoke an invite (teacher only)
    * §12.5 Phase 0-2
    */
-  router.post('/:inviteId/revoke', authMiddleware, requireAuth, async (req, res) => {
+  router.post('/:inviteId/revoke', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const { inviteId } = req.params
     const principal = req.principal
 
@@ -249,7 +249,7 @@ export function createInviteRouter(deps: {
         req.requestId
       )
     )
-  })
+  }))
 
   return router
 }

@@ -6,7 +6,7 @@
 
 import { Router } from 'express'
 import type { StudentRepository, CourseRepository, PackageRepository } from '../ports'
-import { createSuccessEnvelope, AppError } from '../http'
+import { createSuccessEnvelope, AppError, asyncHandler } from '../http'
 import { ErrorCode } from '@rabbit/shared'
 import { authMiddleware, requireUser } from '../middleware'
 
@@ -17,20 +17,20 @@ export function createStudentRouter(deps: {
 }): Router {
   const router = Router()
 
-  router.get('/', authMiddleware, requireUser, async (req, res) => {
+  router.get('/', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const teacher = await deps.studentRepo.listByTeacher(req.principal.userId!)
     res.json(createSuccessEnvelope({ students: teacher }, req.requestId))
-  })
+  }))
 
-  router.get('/:studentId', authMiddleware, requireUser, async (req, res) => {
+  router.get('/:studentId', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const student = await deps.studentRepo.findById(req.params.studentId)
     if (!student) {
       throw new AppError(ErrorCode.VALIDATION_FAILED, 'Student not found')
     }
     res.json(createSuccessEnvelope({ student }, req.requestId))
-  })
+  }))
 
-  router.post('/', authMiddleware, requireUser, async (req, res) => {
+  router.post('/', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const { name, contact, courseId, initialSessions, note } = req.body
     const teacher = await deps.studentRepo.create(req.principal.userId!, {
       name,
@@ -40,17 +40,17 @@ export function createStudentRouter(deps: {
       note,
     })
     res.json(createSuccessEnvelope({ student: teacher }, req.requestId))
-  })
+  }))
 
-  router.patch('/:studentId', authMiddleware, requireUser, async (req, res) => {
+  router.patch('/:studentId', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const student = await deps.studentRepo.update(req.params.studentId, req.body)
     res.json(createSuccessEnvelope({ student }, req.requestId))
-  })
+  }))
 
-  router.post('/:studentId/invites', authMiddleware, requireUser, async (req, res) => {
+  router.post('/:studentId/invites', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const invite = await deps.studentRepo.createInvite(req.params.studentId)
     res.json(createSuccessEnvelope({ invite }, req.requestId))
-  })
+  }))
 
   return router
 }

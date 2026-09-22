@@ -6,7 +6,7 @@
 
 import { Router } from 'express'
 import type { AvailabilityRepository, TeacherRepository } from '../ports'
-import { createSuccessEnvelope, AppError } from '../http'
+import { createSuccessEnvelope, AppError, asyncHandler } from '../http'
 import { ErrorCode } from '@rabbit/shared'
 import { authMiddleware, requireUser } from '../middleware'
 
@@ -16,16 +16,16 @@ export function createAvailabilityRouter(deps: {
 }): Router {
   const router = Router()
 
-  router.get('/', authMiddleware, requireUser, async (req, res) => {
+  router.get('/', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const teacher = await deps.teacherRepo.findByUserId(req.principal.userId!)
     if (!teacher) {
       throw new AppError(ErrorCode.VALIDATION_FAILED, 'Teacher profile not found')
     }
     const data = await deps.availabilityRepo.listRules(teacher.teacherId)
     res.json(createSuccessEnvelope(data, req.requestId))
-  })
+  }))
 
-  router.post('/rules', authMiddleware, requireUser, async (req, res) => {
+  router.post('/rules', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const teacher = await deps.teacherRepo.findByUserId(req.principal.userId!)
     if (!teacher) {
       throw new AppError(ErrorCode.VALIDATION_FAILED, 'Teacher profile not found')
@@ -37,19 +37,19 @@ export function createAvailabilityRouter(deps: {
       endMinute,
     })
     res.json(createSuccessEnvelope({ rule }, req.requestId))
-  })
+  }))
 
-  router.patch('/rules/:ruleId', authMiddleware, requireUser, async (req, res) => {
+  router.patch('/rules/:ruleId', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const rule = await deps.availabilityRepo.updateRule(req.params.ruleId, req.body)
     res.json(createSuccessEnvelope({ rule }, req.requestId))
-  })
+  }))
 
-  router.delete('/rules/:ruleId', authMiddleware, requireUser, async (req, res) => {
+  router.delete('/rules/:ruleId', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     await deps.availabilityRepo.deleteRule(req.params.ruleId)
     res.json(createSuccessEnvelope({ deleted: true }, req.requestId))
-  })
+  }))
 
-  router.post('/rules:copy', authMiddleware, requireUser, async (req, res) => {
+  router.post('/rules:copy', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const { fromWeekday, toWeekdays } = req.body
     const teacher = await deps.teacherRepo.findByUserId(req.principal.userId!)
     if (!teacher) {
@@ -57,9 +57,9 @@ export function createAvailabilityRouter(deps: {
     }
     await deps.availabilityRepo.copyRules(teacher.teacherId, fromWeekday, toWeekdays)
     res.json(createSuccessEnvelope({ created: toWeekdays.length }, req.requestId))
-  })
+  }))
 
-  router.post('/exceptions', authMiddleware, requireUser, async (req, res) => {
+  router.post('/exceptions', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const teacher = await deps.teacherRepo.findByUserId(req.principal.userId!)
     if (!teacher) {
       throw new AppError(ErrorCode.VALIDATION_FAILED, 'Teacher profile not found')
@@ -73,12 +73,12 @@ export function createAvailabilityRouter(deps: {
       reason,
     })
     res.json(createSuccessEnvelope({ exception }, req.requestId))
-  })
+  }))
 
-  router.delete('/exceptions/:exceptionId', authMiddleware, requireUser, async (req, res) => {
+  router.delete('/exceptions/:exceptionId', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     await deps.availabilityRepo.deleteException(req.params.exceptionId)
     res.json(createSuccessEnvelope({ deleted: true }, req.requestId))
-  })
+  }))
 
   return router
 }
