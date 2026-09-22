@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "data": {
+    "timezone": "Asia/Shanghai",
+    "generatedAt": "2026-02-20T02:11:00Z",
+    "days": [
+      { "date": "2026-03-03", "slotCount": 7 },
+      { "date": "2026-03-05", "slotCount": 4 },
+      { "date": "2026-03-06", "slotCount": 6 },
+      { "date": "2026-03-10", "slotCount": 5 },
+      { "date": "2026-03-12", "slotCount": 3 },
+      { "date": "2026-03-13", "slotCount": 7 }
+    ]
+  },
+  "meta": {
+    "generatedAt": "2026-02-20T02:11:00Z",
+    "requestId": "req_bookable_days"
+  }
+}

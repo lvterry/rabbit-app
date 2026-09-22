@@ -1,0 +1,10 @@
+{
+  "ok": false,
+  "code": "SLOT_TAKEN",
+  "message": "这个时间刚被预约了，请选择其他时间。",
+  "retryable": false,
+  "details": {
+    "date": "2026-03-03"
+  },
+  "requestId": "req_error_slot_taken"
+}

@@ -1,0 +1,22 @@
+{
+  "name": "@rabbit/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'API dev server not yet implemented' && exit 0",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'API tests not yet implemented' && exit 0",
+    "test:domain": "echo 'Domain tests not yet implemented' && exit 0",
+    "db:migrate": "echo 'Database migrations not yet implemented' && exit 0"
+  },
+  "dependencies": {
+    "@rabbit/shared": "workspace:*",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  }
+}

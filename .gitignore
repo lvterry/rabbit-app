@@ -1,29 +1,39 @@
-# 依赖
+# Dependencies
 node_modules/
-spec-tests/node_modules/
+.pnpm-store/
 
-# macOS
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
 .DS_Store
 
-# 环境变量与密钥
-# APNs 的 .p8、Sign in with Apple 的 Key、数据库连接串、邮件服务凭证 —— 绝不入库
-.env
-.env.*
-!.env.example
-*.p8
-*.p12
-*.mobileprovision
-AuthKey_*.p8
+# Testing
+coverage/
 
-# iOS
-ios/build/
-ios/DerivedData/
-xcuserdata/
-*.xcuserstate
+# Database
+*.db
+*.sqlite
 
-# Web
-web/dist/
-.vite/
-
-# 本地数据与日志
-*.log
+# Temporary files
+tmp/
+temp/
+.cache/

@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "data": {
+    "date": "2026-03-05",
+    "timezone": "Asia/Shanghai",
+    "generatedAt": "2026-02-20T02:11:00Z",
+    "reason": "FULLY_BOOKED",
+    "slots": []
+  },
+  "meta": {
+    "generatedAt": "2026-02-20T02:11:00Z",
+    "requestId": "req_slots_fully_booked"
+  }
+}

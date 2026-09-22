@@ -1,0 +1,12 @@
+{
+  "ok": false,
+  "code": "LATE_RESCHEDULE_INSUFFICIENT",
+  "message": "本次改期已超过免费期限，需要额外消耗 1 节课。当前剩余课时不足，请先联系老师。",
+  "retryable": false,
+  "details": {
+    "remaining": 1,
+    "reserved": 1,
+    "required": 2
+  },
+  "requestId": "req_error_late_reschedule_insufficient"
+}

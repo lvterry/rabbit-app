@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "data": {
+    "version": "1.0.0",
+    "minSupportedVersion": "1.0.0",
+    "serverTime": "2026-02-20T02:11:00Z"
+  },
+  "meta": {
+    "generatedAt": "2026-02-20T02:11:00Z",
+    "requestId": "req_meta_example"
+  }
+}

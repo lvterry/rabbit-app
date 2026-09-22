@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "data": {
+    "token": "inv_a1b2c3d4e5f6g7h8i9j0",
+    "teacherName": "王老师",
+    "courseName": "西班牙语一对一",
+    "status": "Pending",
+    "expiresAt": "2026-02-27T02:11:00Z",
+    "alreadyAccepted": false,
+    "redirectTo": "/"
+  },
+  "meta": {
+    "generatedAt": "2026-02-20T02:11:00Z",
+    "requestId": "req_invite_pending"
+  }
+}

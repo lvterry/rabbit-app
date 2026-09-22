@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "data": {
+    "studentId": "650e8400-e29b-41d4-a716-446655440002",
+    "studentName": "张同学",
+    "contact": "微信: zhang123",
+    "status": "Active",
+    "boundAt": "2026-02-15T03:00:00Z",
+    "userEmail": "zhang@example.com",
+    "userNickname": "张同学",
+    "nextBooking": null,
+    "packages": [
+      {
+        "packageId": "950e8400-e29b-41d4-a716-446655440005",
+        "courseId": "750e8400-e29b-41d4-a716-446655440003",
+        "courseName": "西班牙语一对一",
+        "purchasedSessions": 10,
+        "remainingSessions": 8,
+        "status": "Active",
+        "createdAt": "2026-02-10T02:00:00Z",
+        "archivedAt": null
+      }
+    ],
+    "totalRemaining": 8,
+    "totalReserved": 2,
+    "totalAvailable": 6,
+    "upcomingBookings": []
+  },
+  "meta": {
+    "generatedAt": "2026-02-20T02:11:00Z",
+    "requestId": "req_student_detail"
+  }
+}
