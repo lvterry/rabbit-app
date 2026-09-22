@@ -22,6 +22,7 @@ let pool: Pool
 let teacherId: string
 let studentId: string
 let courseId: string
+let packageId: string // Shared package for booking tests
 
 beforeAll(async () => {
   pool = new Pool({
@@ -53,6 +54,14 @@ beforeAll(async () => {
   )
   studentId = studentResult.rows[0].id
 
+  // Create a shared package for booking tests (bookings need package_id)
+  const packageResult = await pool.query(
+    `INSERT INTO lesson_package (teacher_id, student_id, course_id, purchased_sessions, remaining_sessions, status)
+     VALUES ($1, $2, $3, 100, 100, 'Active') RETURNING id`,
+    [teacherId, studentId, courseId]
+  )
+  packageId = packageResult.rows[0].id
+
   await pool.query('COMMIT')
 })
 
@@ -68,16 +77,16 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
     const end2 = new Date('2026-10-01T11:30:00Z')
 
     await pool.query(
-      `INSERT INTO booking (teacher_id, student_id, course_id, start_at, end_at, status)
-       VALUES ($1, $2, $3, $4, $5, 'Upcoming')`,
-      [teacherId, studentId, courseId, start1, end1]
+      `INSERT INTO booking (teacher_id, student_id, course_id, package_id, start_at, end_at, status, policy_snapshot_free_cancel_hours)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Upcoming', 24)`,
+      [teacherId, studentId, courseId, packageId, start1, end1]
     )
 
     await expect(
       pool.query(
-        `INSERT INTO booking (teacher_id, student_id, course_id, start_at, end_at, status)
-         VALUES ($1, $2, $3, $4, $5, 'Upcoming')`,
-        [teacherId, studentId, courseId, start2, end2]
+        `INSERT INTO booking (teacher_id, student_id, course_id, package_id, start_at, end_at, status, policy_snapshot_free_cancel_hours)
+         VALUES ($1, $2, $3, $4, $5, $6, 'Upcoming', 24)`,
+        [teacherId, studentId, courseId, packageId, start2, end2]
       )
     ).rejects.toThrow(/23P01|booking_no_overlap/)
   })
@@ -89,16 +98,16 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
     const end2 = new Date('2026-10-02T12:00:00Z')
 
     await pool.query(
-      `INSERT INTO booking (teacher_id, student_id, course_id, start_at, end_at, status)
-       VALUES ($1, $2, $3, $4, $5, 'Upcoming')`,
-      [teacherId, studentId, courseId, start1, end1]
+      `INSERT INTO booking (teacher_id, student_id, course_id, package_id, start_at, end_at, status, policy_snapshot_free_cancel_hours)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Upcoming', 24)`,
+      [teacherId, studentId, courseId, packageId, start1, end1]
     )
 
     await expect(
       pool.query(
-        `INSERT INTO booking (teacher_id, student_id, course_id, start_at, end_at, status)
-         VALUES ($1, $2, $3, $4, $5, 'Upcoming')`,
-        [teacherId, studentId, courseId, start2, end2]
+        `INSERT INTO booking (teacher_id, student_id, course_id, package_id, start_at, end_at, status, policy_snapshot_free_cancel_hours)
+         VALUES ($1, $2, $3, $4, $5, $6, 'Upcoming', 24)`,
+        [teacherId, studentId, courseId, packageId, start2, end2]
       )
     ).resolves.toBeDefined()
   })
@@ -108,10 +117,10 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
     const end = new Date('2026-10-03T11:00:00Z')
 
     const result1 = await pool.query(
-      `INSERT INTO booking (teacher_id, student_id, course_id, start_at, end_at, status)
-       VALUES ($1, $2, $3, $4, $5, 'Upcoming')
+      `INSERT INTO booking (teacher_id, student_id, course_id, package_id, start_at, end_at, status, policy_snapshot_free_cancel_hours)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Upcoming', 24)
        RETURNING id`,
-      [teacherId, studentId, courseId, start, end]
+      [teacherId, studentId, courseId, packageId, start, end]
     )
 
     const bookingId = result1.rows[0].id
@@ -123,9 +132,9 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
 
     await expect(
       pool.query(
-        `INSERT INTO booking (teacher_id, student_id, course_id, start_at, end_at, status)
-         VALUES ($1, $2, $3, $4, $5, 'Upcoming')`,
-        [teacherId, studentId, courseId, start, end]
+        `INSERT INTO booking (teacher_id, student_id, course_id, package_id, start_at, end_at, status, policy_snapshot_free_cancel_hours)
+         VALUES ($1, $2, $3, $4, $5, $6, 'Upcoming', 24)`,
+        [teacherId, studentId, courseId, packageId, start, end]
       )
     ).resolves.toBeDefined()
   })
@@ -135,10 +144,10 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
     const end = new Date('2026-10-04T11:00:00Z')
 
     const bookingResult = await pool.query(
-      `INSERT INTO booking (teacher_id, student_id, course_id, start_at, end_at, status)
-       VALUES ($1, $2, $3, $4, $5, 'Upcoming')
+      `INSERT INTO booking (teacher_id, student_id, course_id, package_id, start_at, end_at, status, policy_snapshot_free_cancel_hours)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Upcoming', 24)
        RETURNING id`,
-      [teacherId, studentId, courseId, start, end]
+      [teacherId, studentId, courseId, packageId, start, end]
     )
 
     const bookingId = bookingResult.rows[0].id
@@ -160,48 +169,51 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
 
   it('should reject negative or out-of-range remaining_sessions (I1: package_balance_range)', async () => {
     const packageResult = await pool.query(
-      `INSERT INTO lesson_package (student_id, course_id, purchased_sessions, remaining_sessions)
-       VALUES ($1, $2, 10, 10)
+      `INSERT INTO lesson_package (teacher_id, student_id, course_id, purchased_sessions, remaining_sessions, status)
+       VALUES ($1, $2, $3, 10, 10, 'Active')
        RETURNING id`,
-      [studentId, courseId]
+      [teacherId, studentId, courseId]
     )
 
-    const packageId = packageResult.rows[0].id
+    const testPackageId = packageResult.rows[0].id
 
     await expect(
       pool.query(
         `UPDATE lesson_package SET remaining_sessions = -1 WHERE id = $1`,
-        [packageId]
+        [testPackageId]
       )
     ).rejects.toThrow(/23514/)
 
     await expect(
       pool.query(
         `UPDATE lesson_package SET remaining_sessions = 11 WHERE id = $1`,
-        [packageId]
+        [testPackageId]
       )
     ).rejects.toThrow(/23514/)
   })
 
   it('should reject UPDATE/DELETE on package_transaction (I4: append-only ledger)', async () => {
+    // Create package with teacher_id (required NOT NULL field)
     const packageResult = await pool.query(
-      `INSERT INTO lesson_package (student_id, course_id, purchased_sessions, remaining_sessions)
-       VALUES ($1, $2, 5, 5)
+      `INSERT INTO lesson_package (teacher_id, student_id, course_id, purchased_sessions, remaining_sessions, status)
+       VALUES ($1, $2, $3, 5, 5, 'Active')
        RETURNING id`,
-      [studentId, courseId]
+      [teacherId, studentId, courseId]
     )
 
-    const packageId = packageResult.rows[0].id
+    const testPackageId = packageResult.rows[0].id
 
+    // Insert a valid transaction (this should succeed)
     const txResult = await pool.query(
       `INSERT INTO package_transaction (student_id, course_id, lesson_package_id, type, amount, note)
        VALUES ($1, $2, $3, 'PACKAGE_CREATED', 5, 'Test')
        RETURNING id`,
-      [studentId, courseId, packageId]
+      [studentId, courseId, testPackageId]
     )
 
     const txId = txResult.rows[0].id
 
+    // Now test that UPDATE is denied (migration 003 revokes UPDATE on package_transaction)
     await expect(
       pool.query(
         `UPDATE package_transaction SET amount = 10 WHERE id = $1`,
@@ -209,6 +221,7 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
       )
     ).rejects.toThrow(/42501/)
 
+    // Test that DELETE is denied
     await expect(
       pool.query(
         `DELETE FROM package_transaction WHERE id = $1`,
@@ -249,7 +262,7 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
         `INSERT INTO student (teacher_id, name, user_id) VALUES ($1, 'Bound Student 2', $2)`,
         [teacherId, userId]
       )
-    ).rejects.toThrow(/23505|student_teacher_user_key/)
+    ).rejects.toThrow(/23505|idx_student_teacher_user_bound/)
   })
 
   it('should reject active_session_id pointing to different Booking (I2: composite FK)', async () => {
@@ -257,17 +270,17 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
     const end = new Date('2026-10-05T11:00:00Z')
 
     const booking1Result = await pool.query(
-      `INSERT INTO booking (teacher_id, student_id, course_id, start_at, end_at, status)
-       VALUES ($1, $2, $3, $4, $5, 'Upcoming')
+      `INSERT INTO booking (teacher_id, student_id, course_id, package_id, start_at, end_at, status, policy_snapshot_free_cancel_hours)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Upcoming', 24)
        RETURNING id`,
-      [teacherId, studentId, courseId, start, end]
+      [teacherId, studentId, courseId, packageId, start, end]
     )
 
     const booking2Result = await pool.query(
-      `INSERT INTO booking (teacher_id, student_id, course_id, start_at, end_at, status)
-       VALUES ($1, $2, $3, $4, $5, 'Upcoming')
+      `INSERT INTO booking (teacher_id, student_id, course_id, package_id, start_at, end_at, status, policy_snapshot_free_cancel_hours)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Upcoming', 24)
        RETURNING id`,
-      [teacherId, studentId, courseId, new Date('2026-10-05T14:00:00Z'), new Date('2026-10-05T15:00:00Z')]
+      [teacherId, studentId, courseId, packageId, new Date('2026-10-05T14:00:00Z'), new Date('2026-10-05T15:00:00Z')]
     )
 
     const booking1Id = booking1Result.rows[0].id
@@ -288,5 +301,101 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
         [sessionId, booking1Id]
       )
     ).rejects.toThrow(/23503/)
+  })
+
+  it('should allow complete→undo→complete (two lesson_session rows)', async () => {
+    // P0 #2b fix: Allows multiple sessions per booking (one Active at a time)
+    const start = new Date('2026-10-06T10:00:00Z')
+    const end = new Date('2026-10-06T11:00:00Z')
+
+    const bookingResult = await pool.query(
+      `INSERT INTO booking (teacher_id, student_id, course_id, package_id, start_at, end_at, status, policy_snapshot_free_cancel_hours)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Upcoming', 24)
+       RETURNING id`,
+      [teacherId, studentId, courseId, packageId, start, end]
+    )
+
+    const bookingId = bookingResult.rows[0].id
+
+    // First complete: Create Active session
+    const session1Result = await pool.query(
+      `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, start_at, end_at, status, source)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Active', 'TeacherConfirmed')
+       RETURNING id`,
+      [bookingId, teacherId, studentId, courseId, start, end]
+    )
+
+    const session1Id = session1Result.rows[0].id
+
+    // Undo: Void the first session
+    await pool.query(
+      `UPDATE lesson_session SET status = 'Voided', voided_at = now() WHERE id = $1`,
+      [session1Id]
+    )
+
+    // Second complete: Create another Active session for same booking
+    // This should succeed (only partial unique index prevents duplicate Active)
+    await expect(
+      pool.query(
+        `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, start_at, end_at, status, source)
+         VALUES ($1, $2, $3, $4, $5, $6, 'Active', 'TeacherConfirmed')`,
+        [bookingId, teacherId, studentId, courseId, start, end]
+      )
+    ).resolves.toBeDefined()
+
+    // Verify we now have 2 sessions for this booking
+    const { rows: sessions } = await pool.query(
+      `SELECT status FROM lesson_session WHERE booking_id = $1 ORDER BY created_at`,
+      [bookingId]
+    )
+
+    expect(sessions.length).toBe(2)
+    expect(sessions[0].status).toBe('Voided')
+    expect(sessions[1].status).toBe('Active')
+  })
+
+  it('should verify package creation with 0/0 + PACKAGE_CREATED transaction', async () => {
+    // P0 #1 fix: Packages start at 0/0, PACKAGE_CREATED is the sole balance mutation
+    const newPackageResult = await pool.query(
+      `INSERT INTO lesson_package (teacher_id, student_id, course_id, purchased_sessions, remaining_sessions, status)
+       VALUES ($1, $2, $3, 0, 0, 'Active')
+       RETURNING id`,
+      [teacherId, studentId, courseId]
+    )
+
+    const newPackageId = newPackageResult.rows[0].id
+
+    // Initial state: 0/0
+    let { rows: [state] } = await pool.query(
+      `SELECT purchased_sessions, remaining_sessions FROM lesson_package WHERE id = $1`,
+      [newPackageId]
+    )
+    expect(state.purchased_sessions).toBe(0)
+    expect(state.remaining_sessions).toBe(0)
+
+    // Apply PACKAGE_CREATED transaction to add 10 sessions
+    await pool.query(
+      `INSERT INTO package_transaction (student_id, course_id, lesson_package_id, type, amount, note)
+       VALUES ($1, $2, $3, 'PACKAGE_CREATED', 10, 'Initial purchase')`,
+      [studentId, courseId, newPackageId]
+    )
+
+    // Manually update balance (in production, apply_package_transaction does this)
+    await pool.query(
+      `UPDATE lesson_package 
+       SET purchased_sessions = purchased_sessions + 10,
+           remaining_sessions = remaining_sessions + 10
+       WHERE id = $1`,
+      [newPackageId]
+    )
+
+    // Final state: 10/10
+    state = (await pool.query(
+      `SELECT purchased_sessions, remaining_sessions FROM lesson_package WHERE id = $1`,
+      [newPackageId]
+    )).rows[0]
+
+    expect(state.purchased_sessions).toBe(10)
+    expect(state.remaining_sessions).toBe(10)
   })
 })

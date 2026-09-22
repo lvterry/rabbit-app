@@ -53,10 +53,10 @@ beforeAll(async () => {
   studentId = studentResult.rows[0].id
 
   const packageResult = await pool.query(
-    `INSERT INTO lesson_package (student_id, course_id, purchased_sessions, remaining_sessions)
-     VALUES ($1, $2, 1, 1)
+    `INSERT INTO lesson_package (teacher_id, student_id, course_id, purchased_sessions, remaining_sessions, status)
+     VALUES ($1, $2, $3, 1, 1, 'Active')
      RETURNING id`,
-    [studentId, courseId]
+    [teacherId, studentId, courseId]
   )
   packageId = packageResult.rows[0].id
 
