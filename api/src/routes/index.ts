@@ -56,6 +56,7 @@ export function createApiRouter(deps: RouteDependencies): Router {
     studentRepo: deps.studentRepo,
     bookingRepo: deps.bookingRepo,
     packageRepo: deps.packageRepo,
+    courseRepo: deps.courseRepo,
   }))
   
   // Business routes - mounted to match §12 exact paths
