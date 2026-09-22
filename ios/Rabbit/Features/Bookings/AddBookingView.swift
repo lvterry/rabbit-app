@@ -54,16 +54,14 @@ struct AddBookingView: View {
                                 .font(.subheadline)
                             }
                             
-                            if let available = course.available {
-                                HStack {
-                                    Text("剩余课时")
-                                        .foregroundStyle(.secondary)
-                                    
-                                    Spacer()
-                                    
-                                    Text("\(available) 节")
+                            HStack {
+                                Text("剩余课时")
+                                    .foregroundStyle(.secondary)
+                                
+                                Spacer()
+                                
+                                Text("\(course.available) 节")
                                         .fontWeight(.medium)
-                                }
                             }
                         } else {
                             ForEach(viewModel.availableCourses) { course in
@@ -81,11 +79,9 @@ struct AddBookingView: View {
                                         
                                         Spacer()
                                         
-                                        if let available = course.available {
-                                            Text("剩余 \(available) 节")
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
+                                        Text("剩余 \(course.available) 节")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
                                         
                                         Image(systemName: "chevron.right")
                                             .foregroundStyle(.secondary)

@@ -8,6 +8,13 @@ struct BookingDetailView: View {
     @State private var showUndoConfirm = false
     @State private var cancelReason = ""
     
+    private var showErrorAlert: Binding<Bool> {
+        Binding(
+            get: { viewModel.error != nil },
+            set: { if !$0 { viewModel.error = nil } }
+        )
+    }
+    
     var body: some View {
         Group {
             if let booking = viewModel.booking {
@@ -246,10 +253,7 @@ struct BookingDetailView: View {
                 } message: {
                     Text("确定要撤销这次课程的完成状态吗？")
                 }
-                .alert("操作失败", isPresented: Binding(
-                    get: { viewModel.error != nil },
-                    set: { if !$0 { viewModel.error = nil } }
-                )) {
+                .alert("操作失败", isPresented: showErrorAlert) {
                     Button("确定", role: .cancel) { }
                 } message: {
                     if let error = viewModel.error {

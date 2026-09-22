@@ -44,6 +44,16 @@ public struct StudentCourse: Codable, Identifiable {
     public let available: Int
     
     public var id: String { courseId }
+    
+    public init(courseId: String, courseName: String, durationMinutes: Int, courseStatus: String, remaining: Int, reserved: Int, available: Int) {
+        self.courseId = courseId
+        self.courseName = courseName
+        self.durationMinutes = durationMinutes
+        self.courseStatus = courseStatus
+        self.remaining = remaining
+        self.reserved = reserved
+        self.available = available
+    }
 }
 
 // MARK: - Student List
