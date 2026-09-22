@@ -334,8 +334,8 @@ public final class AddBookingViewModel {
             students = listView.students
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -427,8 +427,8 @@ public final class AddBookingViewModel {
             )
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
