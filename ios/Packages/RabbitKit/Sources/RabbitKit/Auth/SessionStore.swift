@@ -135,8 +135,20 @@ public final class SessionStore: ObservableObject {
         let meEnvelope = try decoder.decode(APIResponse<MeView>.self, from: meData)
         let meView = meEnvelope.data
         
+        // Auth gate: only authenticate if user is a teacher with valid profile
+        guard meView.isTeacher, let teacher = meView.teacher else {
+            // Not a teacher or teacher profile missing - fail closed
+            clearSession()
+            throw RabbitAPIError.serverError(
+                code: ErrorCode.forbidden,
+                message: "User is not a teacher",
+                retryable: false,
+                details: nil
+            )
+        }
+        
         self.currentUser = meView.user
-        self.teacher = meView.teacher
+        self.teacher = teacher
         self.isAuthenticated = true
     }
 }
