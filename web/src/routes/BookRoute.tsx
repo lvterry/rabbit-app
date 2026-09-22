@@ -25,6 +25,7 @@ export function BookRoute(_props: BookRouteProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<SlotView | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null)
 
   useEffect(() => {
     if (!teacherId || !courseId) {
@@ -77,12 +78,10 @@ export function BookRoute(_props: BookRouteProps) {
   }
 
   async function handleConfirm() {
-    if (!courseId || !selectedSlot) return
+    if (!courseId || !selectedSlot || !idempotencyKey) return
 
     setSubmitting(true)
     setError(null)
-
-    const idempotencyKey = crypto.randomUUID()
 
     let response
 
@@ -105,6 +104,7 @@ export function BookRoute(_props: BookRouteProps) {
         if (selectedDate) {
           await loadSlots(selectedDate)
         }
+        setIdempotencyKey(null)
         setStep('time')
       } else if (response.code === ErrorCode.LATE_RESCHEDULE_INSUFFICIENT) {
         setError(response.message)
@@ -253,6 +253,7 @@ export function BookRoute(_props: BookRouteProps) {
               }}
               onClick={() => {
                 setSelectedSlot(slot)
+                setIdempotencyKey(crypto.randomUUID())
                 setStep('confirm')
               }}
             >
@@ -318,7 +319,10 @@ export function BookRoute(_props: BookRouteProps) {
         <button
           class="button button-secondary"
           style={{ marginTop: '8px' }}
-          onClick={() => setStep('time')}
+          onClick={() => {
+            setIdempotencyKey(null)
+            setStep('time')
+          }}
           disabled={submitting}
         >
           返回
