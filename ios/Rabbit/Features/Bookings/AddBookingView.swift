@@ -440,10 +440,3 @@ public final class AddBookingViewModel {
         error = nil
     }
 }
-
-#Preview {
-    AddBookingView(viewModel: AddBookingViewModel(
-        studentRepo: MockStudentRepository(),
-        bookingRepo: MockBookingRepository()
-    ))
-}

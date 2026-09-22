@@ -221,8 +221,8 @@ public final class AddStudentViewModel {
             courses = try await courseRepo.courses(includeArchived: false)
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     
@@ -244,8 +244,8 @@ public final class AddStudentViewModel {
             createdInvite = result.invite
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
 }
