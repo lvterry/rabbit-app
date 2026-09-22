@@ -37,8 +37,8 @@ public final class StudentListViewModel {
             stats = view.stats
         } catch let err as RabbitAPIError {
             error = err
-        } catch {
-            error = .unknown(error)
+        } catch let caught {
+            error = .unknown(caught)
         }
     }
     

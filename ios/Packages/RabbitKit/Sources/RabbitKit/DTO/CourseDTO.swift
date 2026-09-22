@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Course
 
 /// Course entity
-public struct Course: Codable, Identifiable {
+public struct Course: Codable, Identifiable, Hashable {
     public let courseId: String
     public let name: String
     public let durationMinutes: Int

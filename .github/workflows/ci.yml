@@ -33,3 +33,24 @@ jobs:
       
       - name: Contract tests
         run: pnpm test:contract
+
+  ios-build-gate:
+    name: iOS Build Gate
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Resolve Swift package dependencies
+        run: xcodebuild -resolvePackageDependencies -project ios/Rabbit.xcodeproj -scheme Rabbit
+      
+      - name: Build for iOS Simulator
+        run: |
+          xcodebuild \
+            -project ios/Rabbit.xcodeproj \
+            -scheme Rabbit \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            build

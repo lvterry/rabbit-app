@@ -12,6 +12,15 @@ public struct Slot: Codable, Identifiable {
     public let label: String        // Display label
     
     public var id: String { startAt }
+    
+    public init(startAt: String, endAt: String, startLocal: String, endLocal: String, timeRange: String, label: String) {
+        self.startAt = startAt
+        self.endAt = endAt
+        self.startLocal = startLocal
+        self.endLocal = endLocal
+        self.timeRange = timeRange
+        self.label = label
+    }
 }
 
 // MARK: - Slots Response
