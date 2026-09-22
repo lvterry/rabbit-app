@@ -91,7 +91,9 @@ describe('Idempotency Closed Loop', () => {
         .update(JSON.stringify({ method, path, body }))
         .digest('hex')
       
-      const idempotencyKey = 'test-key-1'
+      // Generate UUIDs for idempotency key and booking
+      const { rows: [keyRow] } = await client.query(`SELECT uuid_generate_v4() as key`)
+      const idempotencyKey = keyRow.key
 
       // Insert booking
       const { rows: [booking] } = await client.query(
@@ -163,7 +165,9 @@ describe('Idempotency Closed Loop', () => {
         .update(JSON.stringify({ method, path, body }))
         .digest('hex')
       
-      const idempotencyKey = 'complete-key-1'
+      // Generate UUID for idempotency key
+      const { rows: [keyRow] } = await client.query(`SELECT uuid_generate_v4() as key`)
+      const idempotencyKey = keyRow.key
 
       // First request succeeds and writes record
       await client.query(
@@ -209,7 +213,9 @@ describe('Idempotency Closed Loop', () => {
     try {
       await client.query('BEGIN')
 
-      const idempotencyKey = 'reuse-key-1'
+      // Generate UUID for idempotency key
+      const { rows: [keyRow] } = await client.query(`SELECT uuid_generate_v4() as key`)
+      const idempotencyKey = keyRow.key
 
       // First request with one hash
       const method1 = 'POST'
@@ -270,7 +276,9 @@ describe('Idempotency Closed Loop', () => {
     try {
       await client.query('BEGIN')
 
-      const idempotencyKey = 'cross-endpoint-key'
+      // Generate UUID for idempotency key
+      const { rows: [keyRow] } = await client.query(`SELECT uuid_generate_v4() as key`)
+      const idempotencyKey = keyRow.key
 
       // First request to create booking
       const endpoint1 = 'POST /v1/bookings'
