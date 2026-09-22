@@ -11,7 +11,7 @@ struct BookingDetailView: View {
     private var showErrorAlert: Binding<Bool> {
         Binding(
             get: { viewModel.error != nil },
-            set: { if !$0 { viewModel.error = nil } }
+            set: { _ in }
         )
     }
     

@@ -5,6 +5,13 @@ struct AddStudentView: View {
     @Bindable var viewModel: AddStudentViewModel
     @Environment(\.dismiss) private var dismiss
     
+    private var showErrorAlert: Binding<Bool> {
+        Binding(
+            get: { viewModel.error != nil },
+            set: { _ in }
+        )
+    }
+    
     var body: some View {
         NavigationStack {
             if viewModel.createdInvite != nil {
@@ -77,10 +84,7 @@ struct AddStudentView: View {
                         .disabled(!viewModel.canCreate || viewModel.isCreating)
                     }
                 }
-                .alert("创建失败", isPresented: Binding(
-                    get: { viewModel.error != nil },
-                    set: { if !$0 { viewModel.error = nil } }
-                )) {
+                .alert("创建失败", isPresented: showErrorAlert) {
                     Button("确定", role: .cancel) { }
                 } message: {
                     if let error = viewModel.error {
