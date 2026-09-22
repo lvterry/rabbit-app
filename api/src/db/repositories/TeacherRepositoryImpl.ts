@@ -188,4 +188,17 @@ export class TeacherRepositoryImpl {
       maxReschedules: row.max_reschedules,
     }
   }
+
+  async listAll(): Promise<TeacherProfile[]> {
+    const result = await this.pool.query(
+      `SELECT id, user_id, name, avatar_url, bio, timezone,
+              slot_step_minutes, min_lead_hours, max_advance_days,
+              free_cancel_hours, auto_settle_hours, undo_complete_days,
+              max_reschedules, status
+       FROM teacher_profile
+       ORDER BY created_at ASC`
+    )
+
+    return result.rows.map(row => this.mapRowToProfile(row))
+  }
 }

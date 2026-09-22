@@ -48,4 +48,9 @@ export interface TeacherRepository {
     undoCompleteDays: number
     maxReschedules: number
   }>
+
+  /**
+   * List all teachers (dev/test only)
+   */
+  listAll?(): Promise<TeacherProfile[]>
 }

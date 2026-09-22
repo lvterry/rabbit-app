@@ -643,7 +643,7 @@ export class BookingRepositoryImpl implements BookingRepository {
         [bookingId]
       )
 
-      // P0 #5: Record idempotency success (use middleware values)
+      // P0 #5: Record idempotency success BEFORE COMMIT (Write A requirement)
       const finalEndpoint = endpoint || `POST /v1/bookings/${bookingId}/completion`
       const finalRequestHash = requestHash || (() => {
         const crypto = require('crypto')
@@ -652,6 +652,7 @@ export class BookingRepositoryImpl implements BookingRepository {
           .digest('hex')
       })()
       
+      // Insert idempotency record inside transaction (using client, not this.pool)
       try {
         await client.query(
           `INSERT INTO idempotency_record (
@@ -664,7 +665,7 @@ export class BookingRepositoryImpl implements BookingRepository {
             idempotencyKey,
             finalEndpoint,
             finalRequestHash,
-            JSON.stringify({ ok: true, data: { bookingId } })
+            JSON.stringify({ ok: true, data: { bookingId, status: 'Completed' } })
           ]
         )
       } catch (idemError: any) {
@@ -673,6 +674,7 @@ export class BookingRepositoryImpl implements BookingRepository {
 
       await client.query('COMMIT')
 
+      // Fetch and return full view (after commit)
       const result = await this.findById(bookingId)
       return result!
 
@@ -712,7 +714,7 @@ export class BookingRepositoryImpl implements BookingRepository {
          JOIN teacher_profile tp ON tp.id = b.teacher_id
          LEFT JOIN lesson_session ls ON ls.booking_id = b.id AND ls.status = 'Active'
          WHERE b.id = $1
-         FOR UPDATE`,
+         FOR UPDATE OF b, tp`,
         [bookingId]
       )
 
