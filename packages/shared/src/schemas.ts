@@ -448,23 +448,24 @@ export const createPackageRequestSchema = z.object({
 
 // Package transaction request schema - discriminated union by mode
 // Enforces: add/deduct have NO type, set REQUIRES type (PURCHASE_ADJUSTMENT | BALANCE_ADJUSTMENT)
+// .strict() prevents add/deduct from accepting (and stripping) extra type field
 export const addPackageTransactionRequestSchema = z.discriminatedUnion('mode', [
   z.object({
     mode: z.literal('add'),
     sessions: z.number().int().positive(), // must be > 0
     note: z.string().optional(),
-  }),
+  }).strict(),
   z.object({
     mode: z.literal('deduct'),
     sessions: z.number().int().positive(), // must be > 0
     note: z.string().optional(),
-  }),
+  }).strict(),
   z.object({
     mode: z.literal('set'),
     sessions: z.number().int().nonnegative(), // >= 0
     type: z.enum(['PURCHASE_ADJUSTMENT', 'BALANCE_ADJUSTMENT']), // REQUIRED
     note: z.string().optional(),
-  }),
+  }).strict(),
 ])
 
 export const createCourseRequestSchema = z.object({

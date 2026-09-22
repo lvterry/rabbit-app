@@ -10,7 +10,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --test"
+    "test": "tsx --test src/schemas.test.ts"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
