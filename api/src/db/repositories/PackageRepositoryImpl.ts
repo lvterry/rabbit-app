@@ -120,6 +120,7 @@ export class PackageRepositoryImpl implements PackageRepository {
       )
 
       // Create initial transaction via SECURITY DEFINER function
+      // Note: actorUserId/actorStudentId are NULL for PACKAGE_CREATED (system operation)
       await client.query(
         `SELECT * FROM apply_package_transaction($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
@@ -129,8 +130,8 @@ export class PackageRepositoryImpl implements PackageRepository {
           null,                      // p_booking_id
           null,                      // p_session_id
           data.note || null,         // p_note
-          data.actorUserId || null,  // p_actor_user_id
-          data.actorStudentId || null // p_actor_student_id
+          null,                      // p_actor_user_id (NULL for system operation)
+          null                       // p_actor_student_id (NULL for system operation)
         ]
       )
 
@@ -166,11 +167,8 @@ export class PackageRepositoryImpl implements PackageRepository {
     } else if (data.mode === 'deduct') {
       type = 'MANUAL_DEDUCT'
       amount = -data.sessions
-    } else if (data.mode === 'set') {
-      // For 'set' mode, caller must explicitly provide type
-      if (!data.type) {
-        throw new Error('Type is required for mode=set')
-      }
+    } else {
+      // mode === 'set' (discriminated union ensures data.type exists)
       type = data.type
       
       // Get current remaining to calculate amount
@@ -179,8 +177,6 @@ export class PackageRepositoryImpl implements PackageRepository {
         throw new Error(`Package ${packageId} not found`)
       }
       amount = data.sessions - pkg.remainingSessions
-    } else {
-      throw new Error(`Invalid mode: ${data.mode}`)
     }
 
     // Call SECURITY DEFINER function
@@ -211,9 +207,12 @@ export class PackageRepositoryImpl implements PackageRepository {
 
   async listTransactions(packageId: string): Promise<PackageTransactionView[]> {
     const { rows } = await this.pool.query(
-      `SELECT * FROM package_transaction
-      WHERE package_id = $1
-      ORDER BY created_at DESC`,
+      `SELECT pt.*, lp.course_id, c.name as course_name
+       FROM package_transaction pt
+       JOIN lesson_package lp ON lp.id = pt.package_id
+       JOIN course c ON c.id = lp.course_id
+       WHERE pt.package_id = $1
+       ORDER BY pt.created_at DESC`,
       [packageId]
     )
 
@@ -222,11 +221,12 @@ export class PackageRepositoryImpl implements PackageRepository {
 
   async listTransactionsByStudent(studentId: string): Promise<PackageTransactionView[]> {
     const { rows } = await this.pool.query(
-      `SELECT pt.*
-      FROM package_transaction pt
-      JOIN lesson_package lp ON lp.id = pt.package_id
-      WHERE lp.student_id = $1
-      ORDER BY pt.created_at DESC`,
+      `SELECT pt.*, lp.course_id, c.name as course_name
+       FROM package_transaction pt
+       JOIN lesson_package lp ON lp.id = pt.package_id
+       JOIN course c ON c.id = lp.course_id
+       WHERE lp.student_id = $1
+       ORDER BY pt.created_at DESC`,
       [studentId]
     )
 
@@ -250,7 +250,7 @@ export class PackageRepositoryImpl implements PackageRepository {
     // Calculate aggregate balance
     const balance = calculateAggregateBalance(
       packages.map(p => ({
-        id: p.id,
+        id: p.packageId,
         createdAt: new Date(p.createdAt),
         remainingSessions: p.remainingSessions,
         status: p.status as 'Active' | 'Used Up' | 'Archived'
@@ -297,7 +297,7 @@ export class PackageRepositoryImpl implements PackageRepository {
     
     return selectPackageForBooking(
       packages.map(p => ({
-        id: p.id,
+        id: p.packageId,
         createdAt: new Date(p.createdAt),
         remainingSessions: p.remainingSessions,
         status: p.status as 'Active' | 'Used Up' | 'Archived'
@@ -318,24 +318,23 @@ export class PackageRepositoryImpl implements PackageRepository {
 
   private mapPackageView(row: any): PackageView {
     return {
-      id: row.id,
-      teacherId: row.teacher_id,
-      studentId: row.student_id,
+      packageId: row.id,
       courseId: row.course_id,
       courseName: row.course_name,
       purchasedSessions: row.purchased_sessions,
       remainingSessions: row.remaining_sessions,
       status: row.status,
       createdAt: row.created_at.toISOString(),
-      createdDate: row.created_at.toISOString().substring(0, 10),
       archivedAt: row.archived_at ? row.archived_at.toISOString() : null
     }
   }
 
   private mapTransactionView(row: any): PackageTransactionView {
     return {
-      id: row.id,
+      transactionId: row.id,
       packageId: row.package_id,
+      courseId: row.course_id || '',
+      courseName: row.course_name || '',
       type: row.type,
       label: this.getTransactionLabel(row.type),
       amount: row.amount,
@@ -343,8 +342,6 @@ export class PackageRepositoryImpl implements PackageRepository {
       beforeSessions: row.before_sessions,
       afterSessions: row.after_sessions,
       balanceText: `${row.before_sessions} → ${row.after_sessions}`,
-      bookingId: row.booking_id,
-      sessionId: row.session_id,
       note: row.note,
       createdAt: row.created_at.toISOString(),
       createdLabel: this.formatDateLabel(row.created_at)

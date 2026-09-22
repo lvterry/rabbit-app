@@ -28,11 +28,14 @@ export class StudentRepositoryImpl {
       studentId: row.student_id,
       teacherId: row.teacher_id,
       teacherName: row.teacher_name,
-      teacherAvatarUrl: row.teacher_avatar_url,
       studentName: row.student_name,
+      courseName: row.course_name || '',
       status: row.status,
       expiresAt: row.expires_at.toISOString(),
       consumedAt: row.consumed_at?.toISOString() || null,
+      consumedByUserId: row.consumed_by_user_id || null,
+      createdAt: row.created_at?.toISOString() || new Date().toISOString(),
+      url: `https://example.com/invite/${row.token}`, // TODO: actual URL
     }
   }
 
@@ -109,6 +112,36 @@ export class StudentRepositoryImpl {
       createdDate: row.created_at.toISOString().split('T')[0],
     }))
 
+    // Get transactions (need PackageRepositoryImpl for this, stub for now)
+    const transactions: any[] = [] // TODO: implement with PackageRepositoryImpl
+
+    // Get upcoming bookings
+    const upcomingResult = await this.pool.query(
+      `SELECT * FROM booking WHERE student_id = $1 AND status = 'Upcoming' ORDER BY start_at`,
+      [studentId]
+    )
+    const upcoming: any[] = [] // TODO: map to BookingView
+
+    // Get history (completed/cancelled bookings)
+    const historyResult = await this.pool.query(
+      `SELECT * FROM booking WHERE student_id = $1 AND status IN ('Completed', 'Cancelled') ORDER BY start_at DESC`,
+      [studentId]
+    )
+    const history: any[] = [] // TODO: map to BookingView
+
+    // Get active invite
+    const inviteResult = await this.pool.query(
+      `SELECT si.*, t.name as teacher_name, s.name as student_name, '' as course_name
+       FROM student_invite si
+       JOIN student s ON si.student_id = s.id
+       JOIN teacher_profile t ON s.teacher_id = t.id
+       WHERE si.student_id = $1 AND si.status = 'Pending'
+       ORDER BY si.created_at DESC
+       LIMIT 1`,
+      [studentId]
+    )
+    const invite = inviteResult.rows.length > 0 ? this.mapInviteRow(inviteResult.rows[0]) : null
+
     return {
       student: {
         studentId: student.id,
@@ -122,6 +155,10 @@ export class StudentRepositoryImpl {
       },
       courses,
       packages,
+      transactions,
+      upcoming,
+      history,
+      invite,
     }
   }
 
@@ -240,9 +277,10 @@ export class StudentRepositoryImpl {
       )
 
       const packages = packagesResult.rows.map(p => ({
-        packageId: p.id,
+        id: p.id,
         purchasedSessions: p.purchased_sessions,
         remainingSessions: p.remaining_sessions,
+        status: p.status as 'Active' | 'Used Up' | 'Archived',
         createdAt: p.created_at,
       }))
 
@@ -298,8 +336,8 @@ export class StudentRepositoryImpl {
         purchased: null,
         batchCount: packages.length,
         available: balance.available,
-        exhausted: balance.exhausted,
-        fullyReserved: balance.fullyReserved,
+        exhausted: balance.remaining === 0,
+        fullyReserved: balance.available === 0 && balance.remaining > 0,
         nextBooking,
       })
     }

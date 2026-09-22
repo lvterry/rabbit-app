@@ -10,14 +10,14 @@ import type {
   CreateAvailabilityRuleRequest,
   CreateAvailabilityExceptionRequest,
 } from '@rabbit/shared'
-import { minutesToHHmm, formatDateLabel } from '../../domain/time'
+import { minutesToHHMM, formatDateLabel } from '../../domain/time'
 
 export class AvailabilityRepositoryImpl {
   constructor(private pool: Pool) {}
 
   private mapRowToRuleView(row: any): AvailabilityRuleView {
-    const startLocal = minutesToHHmm(row.start_minute)
-    const endLocal = minutesToHHmm(row.end_minute)
+    const startLocal = minutesToHHMM(row.start_minute)
+    const endLocal = minutesToHHMM(row.end_minute)
     return {
       ruleId: row.id,
       teacherId: row.teacher_id,
@@ -38,8 +38,8 @@ export class AvailabilityRepositoryImpl {
     let timeRange: string | null = null
 
     if (!isAllDay) {
-      startLocal = minutesToHHmm(row.start_minute)
-      endLocal = minutesToHHmm(row.end_minute)
+      startLocal = minutesToHHMM(row.start_minute)
+      endLocal = minutesToHHMM(row.end_minute)
       timeRange = `${startLocal}–${endLocal}`
     }
 

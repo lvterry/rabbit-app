@@ -24,8 +24,7 @@ export interface SettleJobResult {
  * @returns Settlement result
  */
 export async function runAutoSettlement(
-  pool: Pool,
-  batchSize: number = 100
+  pool: Pool
 ): Promise<SettleJobResult> {
   const bookingRepo = new BookingRepositoryImpl(pool)
   const result: SettleJobResult = {
@@ -34,10 +33,10 @@ export async function runAutoSettlement(
   }
 
   try {
-    const overdueBookings = await bookingRepo.autoSettle(batchSize)
-    result.settled = overdueBookings.length
+    const settledCount = await bookingRepo.autoSettle()
+    result.settled = settledCount
 
-    console.log(`[settle] Auto-settled ${overdueBookings.length} bookings`)
+    console.log(`[settle] Auto-settled ${settledCount} bookings`)
   } catch (error) {
     console.error('[settle] Auto-settlement failed:', error)
     result.errors.push({
@@ -55,10 +54,9 @@ export async function runAutoSettlement(
  */
 if (require.main === module) {
   const { Pool } = require('pg')
+  const { getPool } = require('../db/connection')
 
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgresql://app_rw:dev_password@localhost:5432/rabbit_dev',
-  })
+  const pool = getPool()
 
   runAutoSettlement(pool)
     .then(result => {

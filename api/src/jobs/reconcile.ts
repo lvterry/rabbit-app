@@ -187,11 +187,9 @@ export async function runReconciliation(pool: Pool): Promise<ReconciliationResul
  * Usage: node -r tsx/cjs api/src/jobs/reconcile.ts
  */
 if (require.main === module) {
-  const { Pool } = require('pg')
+  const { getPool } = require('../db/connection')
 
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgresql://app_rw:dev_password@localhost:5432/rabbit_dev',
-  })
+  const pool = getPool()
 
   runReconciliation(pool)
     .then(result => {
