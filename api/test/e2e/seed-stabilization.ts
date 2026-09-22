@@ -104,10 +104,10 @@ async function seed(): Promise<SeedOutput> {
 
     // 5. Create package with PACKAGE_CREATED transaction (5 sessions)
     const packageResult = await pool.query(
-      `INSERT INTO lesson_package (student_id, course_id, purchased_sessions, remaining_sessions)
-       VALUES ($1, $2, 0, 0)
+      `INSERT INTO lesson_package (teacher_id, student_id, course_id, purchased_sessions, remaining_sessions)
+       VALUES ($1, $2, $3, 0, 0)
        RETURNING id`,
-      [studentId, courseId]
+      [teacherId, studentId, courseId]
     )
     const packageId = packageResult.rows[0].id
 

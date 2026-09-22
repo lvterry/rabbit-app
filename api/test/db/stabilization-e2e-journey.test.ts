@@ -3,23 +3,26 @@
  * 
  * Real Postgres + Real HTTP layer end-to-end journey test
  * 
- * Authority: docs/wave1-stabilization.md (Wave 1 backend P0s)
+ * Authority: docs/wave1-stabilization-e2e.md (E2E Exit Gate)
+ *            docs/wave1-stabilization.md (Wave 1 backend P0s)
  * 
- * Journey coverage:
- * 1. Teacher creates student + invite
+ * Journey coverage (per E2E doc §Journey):
+ * 1. Teacher creates student + invite (seeded)
  * 2. Student accepts invite (gets session)
- * 3. Student views home (shows credits in frozen shape)
+ * 3. Student views home (frozen shape: { cards, bound })
  * 4. Student self-books TWO sessions
  * 5. Student cancels one booking (early cancel, no LATE_CANCEL)
  * 6. On the other booking: teacher reschedules → teacher completes → teacher undoes → complete again
  * 
- * Ledger/accounting asserts:
- * - Create booking: reserve-only (remaining_sessions unchanged)
- * - Reschedule: reserve-only (remaining_sessions unchanged until complete)
- * - LATE_CANCEL only on late cancel paths (not early cancel)
- * - SESSION_COMPLETED only on complete (not on create/reschedule)
- * - Undo then complete-again works (two lesson_session rows: Voided + Active)
- * - Idempotency: same requestHash returns stored response without double-mutating ledger
+ * Accounting Assertions (per E2E doc §Accounting Assertions):
+ * - Package create: 0/0 until PACKAGE_CREATED mutates balance
+ * - Self-book / Free reschedule: Reserve-only (no ledger entry, remaining_sessions unchanged)
+ * - Late cancel/reschedule: LATE_CANCEL ledger entry (balance decrements)
+ * - Free cancel: No ledger entry (remaining_sessions unchanged)
+ * - Complete: SESSION_COMPLETED −1 (balance decrements)
+ * - Undo: Restores balance appropriately (REVERSAL or SESSION_VOIDED)
+ * - Undo then complete-again: Two lesson_session rows (Voided + Active, no column UNIQUE constraint)
+ * - Idempotency: Replay with same key+body returns same result without double-mutation
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
@@ -124,10 +127,10 @@ async function seedTestData() {
 
   // 5. Create package with PACKAGE_CREATED transaction via apply_package_transaction
   const packageResult = await pool.query(
-    `INSERT INTO lesson_package (student_id, course_id, purchased_sessions, remaining_sessions)
-     VALUES ($1, $2, 0, 0)
+    `INSERT INTO lesson_package (teacher_id, student_id, course_id, purchased_sessions, remaining_sessions)
+     VALUES ($1, $2, $3, 0, 0)
      RETURNING id`,
-    [studentId, courseId]
+    [teacherId, studentId, courseId]
   )
   packageId = packageResult.rows[0].id
 
@@ -183,29 +186,42 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
   })
 
   /**
-   * Step 2: Student views home (shows credits)
-   * Note: Current shape is { upcomingBooking, recentBookings, balance }
-   * Frozen shape { cards, bound } is a future migration target (see wave1-stabilization.md §7)
+   * Step 2: Student views home (frozen shape: { cards, bound })
+   * Authority: docs/wave1-stabilization.md §7, docs/wave1-stabilization-e2e.md
    */
-  it('2. Student home shows credits', async () => {
+  it('2. Student home shows credits in frozen shape { cards, bound }', async () => {
     const res = await request
       .get('/v1/me/student-home')
       .set('Authorization', `Bearer ${studentAccessToken}`)
       .expect(200)
 
     expect(res.body.ok).toBe(true)
-    expect(res.body.data).toHaveProperty('balance')
     
-    // Verify student can see their credit balance
-    const balance = res.body.data.balance
-    expect(balance).toBeDefined()
-    expect(balance.packages).toBeDefined()
-    expect(Array.isArray(balance.packages)).toBe(true)
+    // Assert frozen shape explicitly
+    expect(res.body.data).toHaveProperty('cards')
+    expect(res.body.data).toHaveProperty('bound')
     
-    // Verify the package shows 5 remaining sessions
-    const pkg = balance.packages.find((p: any) => p.courseId === courseId)
-    expect(pkg).toBeDefined()
-    expect(pkg.remaining).toBe(5)
+    // Must NOT have old shape properties
+    expect(res.body.data).not.toHaveProperty('upcomingBooking')
+    expect(res.body.data).not.toHaveProperty('recentBookings')
+    expect(res.body.data).not.toHaveProperty('balance')
+    
+    // Verify cards structure
+    const { cards, bound } = res.body.data
+    expect(Array.isArray(cards)).toBe(true)
+    expect(cards.length).toBeGreaterThan(0)
+    
+    const card = cards[0]
+    expect(card.teacherId).toBe(teacherId)
+    expect(card.studentId).toBe(studentId)
+    expect(card.courses).toBeDefined()
+    expect(Array.isArray(card.courses)).toBe(true)
+    
+    // Verify course shows 5 remaining sessions
+    const course = card.courses.find((c: any) => c.courseId === courseId)
+    expect(course).toBeDefined()
+    expect(course.remaining).toBe(5)
+    expect(card.remainingTotal).toBe(5)
   })
 
   /**
@@ -258,20 +274,22 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
     expect(bookingsCheck.rows[0].status).toBe('Upcoming')
     expect(bookingsCheck.rows[1].status).toBe('Upcoming')
 
-    // Verify remaining_sessions is still 5 (reserve-only, not decremented yet)
+    // Assert: Self-book is RESERVE-ONLY (per E2E doc §Accounting Assertions)
+    // - remaining_sessions unchanged (still 5)
+    // - No ledger entry written (no SESSION_COMPLETED, no LATE_CANCEL)
     const packageCheck = await pool.query(
       `SELECT remaining_sessions FROM lesson_package WHERE id = $1`,
       [packageId]
     )
     expect(packageCheck.rows[0].remaining_sessions).toBe(5)
 
-    // Verify NO SESSION_COMPLETED or LATE_CANCEL transactions yet
+    // Verify only PACKAGE_CREATED exists (self-book does NOT write ledger entry)
     const txCheck = await pool.query(
       `SELECT type FROM package_transaction WHERE package_id = $1`,
       [packageId]
     )
     const types = txCheck.rows.map(r => r.type)
-    expect(types).toContain('PACKAGE_CREATED')
+    expect(types).toEqual(['PACKAGE_CREATED']) // Only one entry
     expect(types).not.toContain('SESSION_COMPLETED')
     expect(types).not.toContain('LATE_CANCEL')
 
@@ -282,8 +300,9 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
 
   /**
    * Step 4: Student cancels booking 1 (early cancel, no LATE_CANCEL)
+   * Authority: E2E doc §Accounting Assertions - "Free cancel: No ledger entry"
    */
-  it('4. Student cancels booking 1 (early cancel, no charge)', async () => {
+  it('4. Student cancels booking 1 (early cancel, no LATE_CANCEL)', async () => {
     const booking1Id = (global as any).booking1Id
 
     const res = await request
@@ -308,14 +327,16 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
     expect(bookingCheck.rows[0].status).toBe('Cancelled')
     expect(bookingCheck.rows[0].cancellation_policy_result).toBe('FREE_CANCEL')
 
-    // Verify NO LATE_CANCEL transaction (early cancel is free)
+    // Assert: Free cancel has NO ledger entry (per E2E doc)
     const txCheck = await pool.query(
-      `SELECT type FROM package_transaction WHERE package_id = $1 AND type = 'LATE_CANCEL'`,
+      `SELECT type FROM package_transaction WHERE package_id = $1`,
       [packageId]
     )
-    expect(txCheck.rows.length).toBe(0)
+    const types = txCheck.rows.map(r => r.type)
+    expect(types).toEqual(['PACKAGE_CREATED']) // Still only PACKAGE_CREATED, no LATE_CANCEL
+    expect(types).not.toContain('LATE_CANCEL')
 
-    // Verify remaining_sessions is still 5
+    // Assert: remaining_sessions unchanged (still 5)
     const packageCheck = await pool.query(
       `SELECT remaining_sessions FROM lesson_package WHERE id = $1`,
       [packageId]
@@ -324,9 +345,10 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
   })
 
   /**
-   * Step 5: Teacher reschedules booking 2
+   * Step 5: Teacher reschedules booking 2 (free reschedule, reserve-only)
+   * Authority: E2E doc §Accounting Assertions - "Free reschedule: Reserve only"
    */
-  it('5. Teacher reschedules booking 2', async () => {
+  it('5. Teacher reschedules booking 2 (free reschedule, reserve-only)', async () => {
     const booking2Id = (global as any).booking2Id
 
     // New time (100h from now)
@@ -361,21 +383,31 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
     expect(newBookingCheck.rows[0].status).toBe('Upcoming')
     expect(newBookingCheck.rows[0].rescheduled_from_booking_id).toBe(booking2Id)
 
-    // Verify remaining_sessions is still 5 (reschedule is reserve-only)
+    // Assert: Free reschedule is RESERVE-ONLY (per E2E doc)
+    // - remaining_sessions unchanged (still 5)
+    // - No new ledger entry written
     const packageCheck = await pool.query(
       `SELECT remaining_sessions FROM lesson_package WHERE id = $1`,
       [packageId]
     )
     expect(packageCheck.rows[0].remaining_sessions).toBe(5)
+    
+    // Verify still only PACKAGE_CREATED (no ledger entry for free reschedule)
+    const txCheck = await pool.query(
+      `SELECT type FROM package_transaction WHERE package_id = $1`,
+      [packageId]
+    )
+    expect(txCheck.rows.map(r => r.type)).toEqual(['PACKAGE_CREATED'])
 
     // Store new booking ID
     ;(global as any).booking2Id = newBookingId
   })
 
   /**
-   * Step 6: Teacher completes booking 2
+   * Step 6: Teacher completes booking 2 (SESSION_COMPLETED −1)
+   * Authority: E2E doc §Accounting Assertions - "Complete: SESSION_COMPLETED −1"
    */
-  it('6. Teacher completes booking 2 (SESSION_COMPLETED, remaining decrements)', async () => {
+  it('6. Teacher completes booking 2 (SESSION_COMPLETED −1)', async () => {
     const booking2Id = (global as any).booking2Id
 
     const res = await request
@@ -421,9 +453,10 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
   })
 
   /**
-   * Step 7: Teacher undoes completion
+   * Step 7: Teacher undoes completion (restores balance)
+   * Authority: E2E doc §Accounting Assertions - "Undo: Restores balance appropriately"
    */
-  it('7. Teacher undoes completion (REVERSAL, remaining back to 5)', async () => {
+  it('7. Teacher undoes completion (restores balance)', async () => {
     const booking2Id = (global as any).booking2Id
 
     const res = await request
@@ -467,7 +500,8 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
   })
 
   /**
-   * Step 8: Teacher completes booking 2 again (second SESSION_COMPLETED)
+   * Step 8: Teacher completes booking 2 again (no column UNIQUE constraint blocks this)
+   * Authority: E2E doc §Accounting Assertions - "Undo then complete-again: Two lesson_session rows"
    */
   it('8. Teacher completes booking 2 again (two lesson_session rows: Voided + Active)', async () => {
     const booking2Id = (global as any).booking2Id
@@ -510,7 +544,8 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
   })
 
   /**
-   * Step 9: Idempotency replay (same key returns stored response)
+   * Step 9: Idempotency replay (same key+body returns same result)
+   * Authority: E2E doc §Accounting Assertions - "Idempotency: Replay with same key+body"
    */
   it('9. Idempotency replay returns stored response without double-mutation', async () => {
     const booking2Id = (global as any).booking2Id
