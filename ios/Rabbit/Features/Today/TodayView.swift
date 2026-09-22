@@ -45,25 +45,44 @@ struct TodayView: View {
                             // Pending actions section
                             if !day.pending.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
-                                    Text("待处理 (\(day.pending.count))")
-                                        .font(.headline)
-                                        .padding(.horizontal)
-                                    
-                                    ForEach(day.pending) { booking in
-                                        NavigationLink {
-                                            BookingDetailView(
-                                                viewModel: BookingDetailViewModel(
-                                                    bookingId: booking.bookingId,
-                                                    repo: environment.bookingRepository
-                                                )
-                                            )
-                                        } label: {
-                                            BookingRow(booking: booking, showDate: false)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .padding(.horizontal)
+                                    HStack {
+                                        Text("待处理")
+                                            .font(.subheadline)
+                                            .fontWeight(.semibold)
+                                        
+                                        Text("\(day.pending.count)")
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.stateWarning)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 2)
+                                            .background(Color.accentYellowSoft)
+                                            .cornerRadius(CornerRadius.pill)
                                     }
+                                    .padding(.horizontal)
+                                    .padding(.top, 4)
+                                    
+                                    VStack(spacing: Spacing.sm) {
+                                        ForEach(day.pending) { booking in
+                                            NavigationLink {
+                                                BookingDetailView(
+                                                    viewModel: BookingDetailViewModel(
+                                                        bookingId: booking.bookingId,
+                                                        repo: environment.bookingRepository
+                                                    )
+                                                )
+                                            } label: {
+                                                BookingRow(booking: booking, showDate: false)
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.horizontal)
                                 }
+                                .padding(.vertical, Spacing.md)
+                                .background(Color.accentYellowSoft.opacity(0.3))
+                                .cornerRadius(CornerRadius.lg)
+                                .padding(.horizontal)
                             }
                             
                             // Today's bookings
@@ -103,21 +122,37 @@ struct TodayView: View {
                             }
                             
                             // Empty state
-                            if day.bookings.isEmpty && day.next == nil {
-                                VStack(spacing: 16) {
+                            if day.bookings.isEmpty && day.next == nil && day.pending.isEmpty {
+                                VStack(spacing: Spacing.lg) {
                                     Image(systemName: "calendar.badge.checkmark")
-                                        .font(.system(size: 60))
-                                        .foregroundStyle(.secondary)
+                                        .font(.system(size: 48))
+                                        .foregroundStyle(Color.inkTertiary)
                                     
-                                    Text("今天没有课程")
-                                        .font(.headline)
+                                    Text("今天没有课")
+                                        .font(.title3)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.inkPrimary)
                                     
-                                    Text("享受您的休息时间")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                                    if let nextHint = day.hints.first {
+                                        Text(nextHint)
+                                            .font(.subheadline)
+                                            .foregroundStyle(Color.inkSecondary)
+                                            .multilineTextAlignment(.center)
+                                    }
+                                    
+                                    Button {
+                                        showAddBooking = true
+                                    } label: {
+                                        Label("快速创建预约", systemImage: "plus.circle.fill")
+                                            .fontWeight(.semibold)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(.brandGreen)
+                                    .padding(.top, Spacing.sm)
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 60)
+                                .padding(.horizontal, Spacing.xl)
                             }
                         }
                         .padding(.vertical)
@@ -140,6 +175,7 @@ struct TodayView: View {
                 }
             }
             .navigationTitle("今天")
+            .background(Color.bgApp)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -170,34 +206,43 @@ struct NextBookingCard: View {
     let booking: Booking
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("下一节课")
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            Text("下一节")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.inkSecondary)
+                .padding(.horizontal, Spacing.sm)
+                .padding(.vertical, 4)
+                .background(Color.brandGreenSoft)
+                .cornerRadius(CornerRadius.sm)
             
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(booking.studentName)
-                        .font(.headline)
-                    
-                    Text(booking.courseName)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                Text(booking.studentName)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.inkPrimary)
+                
+                Text(booking.courseName)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.inkSecondary)
+                
+                HStack {
+                    Image(systemName: "clock")
+                        .font(.caption)
+                        .foregroundColor(.brandGreen)
                     
                     Text(booking.timeRange)
                         .font(.subheadline)
-                        .foregroundStyle(.blue)
+                        .fontWeight(.medium)
+                        .foregroundStyle(Color.brandGreen)
                 }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(.secondary)
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Spacing.lg)
+        .background(Color.bgElevated)
+        .cornerRadius(CornerRadius.xl)
+        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
     }
 }
 

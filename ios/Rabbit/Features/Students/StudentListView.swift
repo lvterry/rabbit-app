@@ -59,6 +59,7 @@ struct StudentListView: View {
                 }
             }
             .navigationTitle("学员")
+            .background(Color.bgApp)
             .searchable(text: $viewModel.searchQuery, prompt: "搜索学员姓名")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

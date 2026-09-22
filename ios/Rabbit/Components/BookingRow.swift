@@ -11,10 +11,12 @@ struct BookingRow: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             HStack {
                 Text(booking.studentName)
-                    .font(.headline)
+                    .font(.body)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.inkPrimary)
                 
                 Spacer()
                 
@@ -23,29 +25,33 @@ struct BookingRow: View {
             
             Text(booking.courseName)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.inkSecondary)
             
             HStack {
                 if showDate {
                     Text(booking.dateLabel)
-                        .font(.subheadline)
+                        .font(.callout)
+                        .foregroundColor(.inkSecondary)
                 }
                 
                 Text(booking.timeRange)
-                    .font(.subheadline)
+                    .font(.callout)
+                    .fontWeight(.medium)
+                    .monospacedDigit()
+                    .foregroundColor(.inkPrimary)
                 
                 Spacer()
                 
                 if let remaining = booking.remaining {
                     Text("剩余 \(remaining) 节")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.inkTertiary)
                 }
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .padding(Spacing.lg)
+        .background(Color.bgElevated)
+        .cornerRadius(CornerRadius.md)
     }
 }
 
@@ -57,11 +63,12 @@ struct StatusBadge: View {
     var body: some View {
         Text(statusText)
             .font(.caption)
-            .padding(.horizontal, 8)
+            .fontWeight(.medium)
+            .padding(.horizontal, Spacing.sm)
             .padding(.vertical, 4)
             .background(backgroundColor)
-            .foregroundColor(.white)
-            .cornerRadius(4)
+            .foregroundColor(foregroundColor)
+            .cornerRadius(CornerRadius.pill)
     }
     
     private var statusText: String {
@@ -78,11 +85,22 @@ struct StatusBadge: View {
     private var backgroundColor: Color {
         switch status {
         case .Upcoming:
-            return .blue
+            return Color.bgGrouped
         case .Completed:
-            return .green
+            return Color.brandGreenSoft
         case .Cancelled:
-            return .gray
+            return Color.bgGrouped
+        }
+    }
+    
+    private var foregroundColor: Color {
+        switch status {
+        case .Upcoming:
+            return Color.inkSecondary
+        case .Completed:
+            return Color.brandGreen
+        case .Cancelled:
+            return Color.inkTertiary
         }
     }
 }

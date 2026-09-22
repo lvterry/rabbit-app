@@ -70,6 +70,7 @@ struct CalendarView: View {
                 }
             }
             .navigationTitle("日历")
+            .background(Color.bgApp)
             .sheet(item: $selectedDate) { date in
                 DayDetailView(date: date, viewModel: viewModel)
             }
@@ -127,11 +128,18 @@ struct CourseFilterChip: View {
         Button(action: action) {
             Text(name)
                 .font(.subheadline)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(isSelected ? Color.blue : Color(.systemGray6))
-                .foregroundColor(isSelected ? .white : .primary)
-                .cornerRadius(20)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.sm)
+                .background(isSelected ? Color.brandGreen : Color.bgElevated)
+                .foregroundColor(isSelected ? .white : Color.inkPrimary)
+                .cornerRadius(CornerRadius.pill)
+                .overlay {
+                    if !isSelected {
+                        RoundedRectangle(cornerRadius: CornerRadius.pill)
+                            .strokeBorder(Color.lineHairline, lineWidth: 1)
+                    }
+                }
         }
     }
 }
@@ -142,74 +150,91 @@ struct CalendarDayRow: View {
     let day: CalendarDay
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             HStack {
-                Text(day.weekdayLabel)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                
-                Text(String(day.dayOfMonth))
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                HStack(spacing: Spacing.xs) {
+                    Text(day.weekdayLabel)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.inkSecondary)
+                    
+                    Text(String(day.dayOfMonth))
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.inkPrimary)
+                }
                 
                 if day.isToday {
                     Text("今天")
                         .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.blue)
+                        .fontWeight(.semibold)
                         .foregroundColor(.white)
-                        .cornerRadius(4)
+                        .padding(.horizontal, Spacing.sm)
+                        .padding(.vertical, 4)
+                        .background(Color.brandGreen)
+                        .cornerRadius(CornerRadius.sm)
                 }
                 
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 2) {
                     if day.bookingCount > 0 {
-                        Text("\(day.bookingCount) 节课")
-                            .font(.subheadline)
+                        HStack(spacing: 4) {
+                            Image(systemName: "calendar")
+                                .font(.caption2)
+                                .foregroundColor(.brandGreen)
+                            
+                            Text("\(day.bookingCount) 节")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.brandGreen)
+                        }
                     }
                     
                     if day.slotCount > 0 {
                         Text("\(day.slotCount) 个空位")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.inkTertiary)
                     }
                 }
             }
             
             // Booking list preview
             if !day.bookings.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     ForEach(day.bookings.prefix(3)) { booking in
-                        HStack {
+                        HStack(spacing: Spacing.sm) {
                             Text(booking.timeRange)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .fontWeight(.medium)
+                                .monospacedDigit()
+                                .foregroundColor(.inkPrimary)
                             
                             Text(booking.studentName)
                                 .font(.caption)
+                                .foregroundColor(.inkPrimary)
                             
                             Text("·")
-                                .foregroundStyle(.secondary)
+                                .font(.caption2)
+                                .foregroundStyle(Color.inkTertiary)
                             
                             Text(booking.courseName)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.inkSecondary)
                         }
                     }
                     
                     if day.bookings.count > 3 {
                         Text("还有 \(day.bookings.count - 3) 节...")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.inkTertiary)
                     }
                 }
+                .padding(.top, Spacing.xs)
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .padding(Spacing.lg)
+        .background(Color.bgElevated)
+        .cornerRadius(CornerRadius.md)
     }
 }
 
@@ -255,6 +280,8 @@ struct DayDetailView: View {
                 }
                 .navigationTitle("课程详情")
                 .navigationBarTitleDisplayMode(.inline)
+                .scrollContentBackground(.hidden)
+                .background(Color.bgApp)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("完成") {

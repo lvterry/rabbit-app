@@ -103,6 +103,8 @@ struct ProfileView: View {
                 }
             }
             .navigationTitle("我的")
+            .scrollContentBackground(.hidden)
+            .background(Color.bgApp)
         }
     }
 }
