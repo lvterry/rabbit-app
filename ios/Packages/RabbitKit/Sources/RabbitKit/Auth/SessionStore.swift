@@ -57,6 +57,97 @@ public final class SessionStore: ObservableObject {
         }
     }
     
+    // MARK: - Dev Teacher Auth (DEBUG only)
+    
+    #if DEBUG
+    /// Development-only teacher authentication for E2E testing
+    /// Calls POST /v1/auth/dev/teacher (NODE_ENV=development|test only)
+    /// Returns real User access+refresh JWTs with real Principal
+    public func authenticateDevTeacher() async throws {
+        // Get base URL from environment
+        let baseURLString = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:8787"
+        guard let baseURL = URL(string: baseURLString) else {
+            throw RabbitAPIError.invalidResponse
+        }
+        
+        // Call POST /v1/auth/dev/teacher
+        let devAuthURL = baseURL.appendingPathComponent("v1/auth/dev/teacher")
+        var request = URLRequest(url: devAuthURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Empty body for now; Maya's implementation may define seed selector
+        let emptyBody = "{}".data(using: .utf8)!
+        request.httpBody = emptyBody
+        
+        // Execute request
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw RabbitAPIError.invalidResponse
+        }
+        
+        if httpResponse.statusCode >= 400 {
+            throw RabbitAPIError.serverError(
+                code: ErrorCode.notImplemented,
+                message: "Dev teacher auth endpoint not available (Maya implementing)",
+                retryable: false,
+                details: nil
+            )
+        }
+        
+        // Decode response (expecting accessToken + refreshToken)
+        struct DevAuthResponse: Decodable {
+            let accessToken: String
+            let refreshToken: String
+            let expiresIn: Int?
+        }
+        
+        let decoder = JSONDecoder()
+        let envelope = try decoder.decode(APIResponse<DevAuthResponse>.self, from: data)
+        let authResponse = envelope.data
+        
+        // Store refresh token in keychain
+        keychain.saveRefreshToken(authResponse.refreshToken)
+        
+        // Set access token
+        self.accessToken = authResponse.accessToken
+        
+        // Fetch current user info to populate session
+        let meURL = baseURL.appendingPathComponent("v1/me")
+        var meRequest = URLRequest(url: meURL)
+        meRequest.httpMethod = "GET"
+        meRequest.setValue("Bearer \(authResponse.accessToken)", forHTTPHeaderField: "Authorization")
+        meRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (meData, meResponse) = try await URLSession.shared.data(for: meRequest)
+        
+        guard let meHttpResponse = meResponse as? HTTPURLResponse,
+              meHttpResponse.statusCode < 400 else {
+            throw RabbitAPIError.invalidResponse
+        }
+        
+        let meEnvelope = try decoder.decode(APIResponse<MeView>.self, from: meData)
+        let meView = meEnvelope.data
+        
+        // Auth gate: only authenticate if user is a teacher with valid profile
+        guard meView.isTeacher, let teacher = meView.teacher else {
+            clearSession()
+            throw RabbitAPIError.serverError(
+                code: ErrorCode.forbidden,
+                message: "User is not a teacher",
+                retryable: false,
+                details: nil
+            )
+        }
+        
+        // Set session
+        self.currentUser = meView.user
+        self.teacher = teacher
+        self.isAuthenticated = true
+    }
+    #endif
+    
     // MARK: - Token Refresh
     
     public func refreshAccessToken() async throws {

@@ -89,19 +89,25 @@ For **real API integration** (Wave 1 Stabilization E2E or local development agai
      - `API_BASE_URL` = `http://localhost:8787`
    - **Note:** iOS Simulator's `localhost` automatically maps to host Mac's `localhost`
 
-3. **Authentication Limitation:**
-   - ⚠️ **Sign in with Apple** is not yet wired to local API
-   - Wave 1 Stabilization E2E auth path: TBD by Architect (dev teacher endpoint preferred)
-   - Currently, Xcode Previews with mock repositories remain the primary development workflow
-   - See `ios/docs/wave1-stabilization-e2e-checklist.md` for full E2E walkthrough details
+3. **Dev Teacher Authentication (DEBUG builds only):**
+   - ⚠️ DEBUG builds include a **"Dev: Sign in as seeded teacher"** button on the Onboarding screen
+   - This calls `POST /v1/auth/dev/teacher` (requires `NODE_ENV=development|test` on API)
+   - Returns real User + Teacher JWTs with real Principal
+   - **Maya must implement backend endpoint first** (Wave 1 Stabilization work)
+   - Release builds never show this button (`#if DEBUG` gated)
+   - **No DEMO_MODE login bypass** — this uses real auth flow via SessionStore
 
-4. **Verify API Connectivity:**
+4. **Production Authentication:**
+   - ⚠️ **Sign in with Apple** (`POST /v1/auth/apple`) is not yet implemented (returns 501)
+   - Production auth path TBD; pilot/staging will require Apple Sign In implementation
+
+5. **Verify API Connectivity:**
    ```bash
    curl http://localhost:8787/v1/meta
    # Should return: {"status":"ok",...}
    ```
 
-**Important:** Mock/Preview-only testing does NOT satisfy the E2E exit gate. Real API integration with authenticated Principal is required for Wave 1 Stabilization validation.
+**Important:** Mock/Preview-only testing does NOT satisfy the E2E exit gate. Real API integration with authenticated Principal is required for Wave 1 Stabilization validation. See `ios/docs/wave1-stabilization-e2e-checklist.md` for full walkthrough details.
 
 ### 3. Build & Run
 

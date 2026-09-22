@@ -1,22 +1,23 @@
 # Wave 1 Stabilization E2E — iOS Teacher Walkthrough
 
-**Status:** Preparation Complete — Walkthrough Blocked on Auth  
+**Status:** Auth Wired — Blocked on Maya's Endpoint Implementation  
 **Owner:** Nina (iOS)  
 **Context:** Architect's Wave 1 Stabilization E2E Exit Gate validation  
+**Authority:** [PR #16](https://github.com/lvterry/rabbit-app/pull/16) `docs/wave1-stabilization-e2e.md` (branch `cursor/wave1-e2e-exit-docs-db87`)  
 **Date:** 2026-09-22
 
 ---
 
 ## Goal
 
-Validate iOS Teacher app against **real local API** (docker-compose Postgres + API server) through the complete booking lifecycle:
+Validate iOS Teacher app against **real local API** (docker-compose Postgres + API server) through the complete booking lifecycle per Architect's E2E Exit Gate:
 
 1. Today view shows new student booking after self-book
 2. Teacher reschedules booking
 3. Teacher completes booking  
 4. Teacher undoes completion (DELETE with Idempotency-Key)
 
-**Success criteria:** All steps complete successfully with screenshots captured; balance integrity verified.
+**Success criteria:** All steps complete successfully with screenshots captured; balance integrity verified; no mocks or DEMO_MODE bypass.
 
 ---
 
@@ -56,16 +57,38 @@ Configure API base URL in Xcode scheme:
 
 ---
 
-## Current Blocker: Authentication ⚠️
+## Current Blocker: Maya's Endpoint Implementation ⚠️
 
-**Status:** BLOCKED — walkthrough cannot proceed until auth is resolved.
+**Status:** iOS client wired and ready — waiting for Maya's backend endpoint.
 
-### Issue
+### Auth Path (Architect Decision — PR #16)
 
-- Production auth: `POST /v1/auth/apple` (Sign in with Apple) returns **501 Not Implemented**
-- Local development auth: Architect and Terry discussing preferred approach:
-  - Option: `POST /v1/auth/dev/teacher` (NODE_ENV=development|test) that mints real JWTs with Principal
-  - **NOT implemented yet**
+**Backend (Maya):**
+- Endpoint: `POST /v1/auth/dev/teacher`
+- Gate: `NODE_ENV=development` or `test` only; returns 404/403 in production/staging
+- Behavior: Seeds or looks up a teacher User record and returns **real** access + refresh JWTs
+- Response shape (expected):
+  ```json
+  {
+    "accessToken": "eyJ...",
+    "refreshToken": "eyJ...",
+    "expiresIn": 900
+  }
+  ```
+- iOS then calls `GET /v1/me` with Bearer token to fetch full User + Teacher profile
+- **Status:** NOT implemented yet; Maya owns this endpoint
+
+**iOS Client (Nina — THIS PR):**
+- ✅ `SessionStore.authenticateDevTeacher()` method implemented
+- ✅ DEBUG-only UI entry on `OnboardingView` ("Dev: Sign in as seeded teacher")
+- ✅ Gated with `#if DEBUG` — never enabled in Release builds
+- ✅ Uses real `SessionStore` → real `/v1/*` routes with real Principal
+- ✅ No DEMO_MODE login bypass, no mock repositories
+
+**Walkthrough Prerequisites:**
+1. Maya implements and merges `POST /v1/auth/dev/teacher` endpoint
+2. Mac with Xcode and iOS Simulator available
+3. Local backend stack running (docker-compose Postgres + API)
 
 ### What Does NOT Pass This Gate
 
@@ -76,35 +99,53 @@ Configure API base URL in Xcode scheme:
 
 **Requirement:** iOS must authenticate against the **real API** and obtain a valid JWT that encodes a real `Principal` (teacher_id, student_id scope). Only then can booking lifecycle operations be tested end-to-end.
 
-### Next Steps
-
-1. **Wait** for Architect/Terry decision and implementation of dev teacher auth endpoint
-2. Once available, update `SessionStore.swift` to call the dev auth endpoint (iOS P0 work tracked separately)
-3. Resume this checklist
-
 ---
 
-## Walkthrough Steps (Blocked Until Auth Ready)
+## Walkthrough Steps (Ready When Maya's Endpoint Available)
 
-**Instructions:** Once auth is unblocked, perform these steps in sequence. Check each box after completion and attach screenshot.
+**Instructions:** Once Maya's `POST /v1/auth/dev/teacher` endpoint is available, perform these steps in sequence. Check each box after completion and attach screenshot.
+
+### Step 0: Dev Teacher Authentication (NEW)
+
+**Action:**
+1. Launch iOS app in DEBUG configuration (Xcode)
+2. On Onboarding screen, tap **"Dev: Sign in as seeded teacher"** button
+3. Wait for authentication to complete
+
+**Expected:**
+- API request: `POST /v1/auth/dev/teacher` with empty JSON body `{}`
+- Response: `{ "accessToken": "...", "refreshToken": "...", "expiresIn": 900 }`
+- iOS calls `GET /v1/me` with Bearer token
+- SessionStore populated with real User + Teacher
+- App navigates to MainTabView (4-tab root)
+
+**Screenshot:** `ios/docs/e2e-screenshots/00a-dev-auth-button.png`  
+**Screenshot:** `ios/docs/e2e-screenshots/00b-authenticated-main-tab.png`
+
+**Verify:**
+- [ ] Dev auth button visible in DEBUG build only
+- [ ] Authentication succeeds (no error dialog)
+- [ ] MainTabView appears with Today tab
+
+---
 
 ### Step 1: Prerequisites & Setup
 
 - [ ] Postgres container running (`docker ps`)
 - [ ] API server running on `:8787` (`curl http://localhost:8787/v1/meta`)
 - [ ] Xcode scheme configured with `API_BASE_URL=http://localhost:8787`
-- [ ] iOS app built and launched on Simulator or device
-- [ ] Teacher authenticated via real API (dev teacher auth endpoint)
+- [ ] iOS app built in DEBUG configuration
+- [ ] Teacher authenticated via dev auth button (Step 0)
 
-**Screenshot:** `ios/docs/e2e-screenshots/00-setup-verified.png`  
-*(Optional: terminal showing docker + curl + Xcode scheme)*
+**Screenshot:** `ios/docs/e2e-screenshots/01-setup-verified.png`  
+*(Optional: terminal showing docker + curl)*
 
 ---
 
 ### Step 2: Verify Initial State — Today View
 
 **Action:**
-1. Navigate to **Today** tab (root tab)
+1. Navigate to **Today** tab (should already be selected after auth)
 2. Verify teacher's daily view loads from real API
 
 **Expected:**
@@ -112,7 +153,7 @@ Configure API base URL in Xcode scheme:
 - Response includes upcoming bookings (may be empty if no bookings exist yet)
 - No errors displayed
 
-**Screenshot:** `ios/docs/e2e-screenshots/01-today-initial-state.png`
+**Screenshot:** `ios/docs/e2e-screenshots/02-today-initial-state.png`
 
 ---
 
@@ -138,13 +179,13 @@ curl -X POST http://localhost:8787/v1/bookings \
   }'
 ```
 
-**Alternative:** Use the Student Web app (`http://localhost:3000`) if available.
+**Alternative:** Use the Student Web app (`http://localhost:3000`) if available, or Maya's API journey test can create the booking programmatically.
 
 **Expected:**
 - 201 response with new booking
 - Booking status: `Upcoming`
 
-**Screenshot:** `ios/docs/e2e-screenshots/02-student-booking-created.png`  
+**Screenshot:** `ios/docs/e2e-screenshots/03-student-booking-created.png`  
 *(Optional: curl output or Web UI)*
 
 ---
@@ -161,7 +202,7 @@ curl -X POST http://localhost:8787/v1/bookings \
 - Response includes the newly created booking
 - Booking displays: student name, course, time range, status `Upcoming`
 
-**Screenshot:** `ios/docs/e2e-screenshots/03-today-after-selfbook.png`
+**Screenshot:** `ios/docs/e2e-screenshots/04-today-after-selfbook.png`
 
 **Verify:**
 - [ ] New booking visible in Today list
@@ -185,7 +226,7 @@ curl -X POST http://localhost:8787/v1/bookings \
 - Response: booking with updated `startAt`, status still `Upcoming`
 - Original booking linked via `rescheduledFromBookingId` / `rescheduledToBookingId` (internal)
 
-**Screenshot:** `ios/docs/e2e-screenshots/04-booking-rescheduled.png`
+**Screenshot:** `ios/docs/e2e-screenshots/05-booking-rescheduled.png`
 
 **Verify:**
 - [ ] Booking detail shows new time
@@ -205,7 +246,7 @@ curl -X POST http://localhost:8787/v1/bookings \
 - Response: booking with status `Completed`
 - Balance decremented by course `sessionsPerBooking` (visible in student detail if checked)
 
-**Screenshot:** `ios/docs/e2e-screenshots/05-booking-completed.png`
+**Screenshot:** `ios/docs/e2e-screenshots/06-booking-completed.png`
 
 **Verify:**
 - [ ] Booking status shows "Completed"
@@ -225,7 +266,7 @@ curl -X POST http://localhost:8787/v1/bookings \
 - Response: booking reverts to `Upcoming` status
 - Balance restored (session credit returned to student)
 
-**Screenshot:** `ios/docs/e2e-screenshots/06-completion-undone.png`
+**Screenshot:** `ios/docs/e2e-screenshots/07-completion-undone.png`
 
 **Critical Verification — Idempotency-Key Sent:**
 - [ ] Booking status reverted to `Upcoming`
@@ -265,7 +306,7 @@ curl -X POST http://localhost:8787/v1/bookings \
 - Booking lifecycle complete: `Upcoming → Rescheduled → Completed → Undone → Upcoming`
 - No orphaned state or balance discrepancies
 
-**Screenshot:** `ios/docs/e2e-screenshots/07-final-state-verified.png`
+**Screenshot:** `ios/docs/e2e-screenshots/08-final-state-verified.png`
 
 **Verify:**
 - [ ] Booking status correct
@@ -319,14 +360,16 @@ Store all screenshots in:
 
 ```
 ios/docs/e2e-screenshots/
-├── 00-setup-verified.png
-├── 01-today-initial-state.png
-├── 02-student-booking-created.png
-├── 03-today-after-selfbook.png
-├── 04-booking-rescheduled.png
-├── 05-booking-completed.png
-├── 06-completion-undone.png
-└── 07-final-state-verified.png
+├── 00a-dev-auth-button.png
+├── 00b-authenticated-main-tab.png
+├── 01-setup-verified.png
+├── 02-today-initial-state.png
+├── 03-student-booking-created.png
+├── 04-today-after-selfbook.png
+├── 05-booking-rescheduled.png
+├── 06-booking-completed.png
+├── 07-completion-undone.png
+└── 08-final-state-verified.png
 ```
 
 **Note:** Screenshots are **not committed** to the repository. Attach them to the PR as artifacts or post them in a follow-up PR comment.
@@ -351,5 +394,5 @@ ios/docs/e2e-screenshots/
 
 ---
 
-**Status:** Preparation complete; walkthrough execution **blocked on auth**.  
+**Status:** iOS client wired and ready; walkthrough execution **blocked on Maya's endpoint**.  
 **Updated:** 2026-09-22
