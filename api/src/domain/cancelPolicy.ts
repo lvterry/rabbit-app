@@ -11,7 +11,7 @@ export interface CancelPolicyInput {
   freeCancelHours: number          // Policy snapshot from booking
   cancelledBy: 'Student' | 'Teacher'
   now: Date                        // Current time (UTC)
-  hasStarted: boolean              // Has the booking started?
+  hasStarted?: boolean             // Has the booking started? (optional, computed if not provided)
 }
 
 /**
@@ -28,7 +28,8 @@ export interface CancelPolicyInput {
  * @returns Policy result
  */
 export function determineCancellationPolicy(input: CancelPolicyInput): CancellationPolicyResult {
-  const { startAt, freeCancelHours, cancelledBy, now, hasStarted } = input
+  const { startAt, freeCancelHours, cancelledBy, now } = input
+  const hasStarted = input.hasStarted !== undefined ? input.hasStarted : now >= startAt
 
   // Teacher cancellation is always free
   if (cancelledBy === 'Teacher') {
@@ -40,10 +41,15 @@ export function determineCancellationPolicy(input: CancelPolicyInput): Cancellat
     throw new Error('Student cannot cancel after booking has started')
   }
 
-  // Calculate free cancellation deadline
+  // Special case: freeCancelHours=0 means no free cancellation window
+  if (freeCancelHours === 0) {
+    return 'LATE_CANCEL'
+  }
+
+  // Calculate free cancellation deadline (docs/mvp.md §10.6, docs/data-model.md §5.3)
+  // Rule: now <= startAt - freeCancelHours => FREE, otherwise LATE
   const freeCancelDeadline = new Date(startAt.getTime() - freeCancelHours * 60 * 60 * 1000)
 
-  // Check if within free cancellation period
   if (now <= freeCancelDeadline) {
     return 'FREE_CANCEL'
   } else {
@@ -55,10 +61,12 @@ export function determineCancellationPolicy(input: CancelPolicyInput): Cancellat
  * Check if student can cancel booking
  * 
  * @param startAt Booking start time (UTC)
+ * @param freeCancelHours Free cancellation window (hours before start)
  * @param now Current time (UTC)
- * @returns true if can cancel (not started yet)
+ * @returns true if can cancel (within free window or before start)
  */
-export function canStudentCancel(startAt: Date, now: Date): boolean {
+export function canStudentCancel(startAt: Date, freeCancelHours: number, now: Date): boolean {
+  // Student can cancel if booking hasn't started
   return now < startAt
 }
 
@@ -66,11 +74,13 @@ export function canStudentCancel(startAt: Date, now: Date): boolean {
  * Check if teacher can cancel booking
  * Teacher can always cancel Upcoming bookings
  * 
- * @param status Booking status
- * @returns true if can cancel
+ * @param startAt Booking start time (UTC) - ignored for teacher (always can cancel)
+ * @param freeCancelHours Free cancellation hours - ignored for teacher
+ * @param now Current time (UTC) - ignored for teacher
+ * @returns true (teacher can always cancel upcoming)
  */
-export function canTeacherCancel(status: string): boolean {
-  return status === 'Upcoming'
+export function canTeacherCancel(startAt: Date, freeCancelHours: number, now: Date): boolean {
+  return true // Teacher can always cancel upcoming bookings
 }
 
 /**

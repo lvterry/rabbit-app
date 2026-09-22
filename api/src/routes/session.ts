@@ -292,26 +292,67 @@ export function createSessionRouter(deps: {
       throw new AppError(ErrorCode.FORBIDDEN, 'Student-only endpoint')
     }
 
-    // Get student home data
-    const upcomingBookings = await deps.bookingRepo.listUpcomingByStudent(studentId)
-    const allBookings = await deps.bookingRepo.listByStudent(studentId)
-    const recentBookings = allBookings.slice(0, 3)
+    // P0 #7a: student-home must return {cards, bound} only
+    // NOT upcomingBooking/recentBookings/balance at top level
     
-    // Get package list for balance summary
-    const packages = await deps.packageRepo.listByStudent(studentId)
-    const balanceSummary = {
-      packages: packages.map(pkg => ({
-        courseId: (pkg as any).courseId,
-        remaining: (pkg as any).remaining,
-      })),
+    // Get teacher info
+    const teacher = await deps.teacherRepo.findById(teacherId)
+    if (!teacher) {
+      throw new AppError(ErrorCode.VALIDATION_FAILED, 'Teacher not found')
     }
+
+    // Get student info
+    const student = await deps.studentRepo.findById(studentId)
+    if (!student) {
+      throw new AppError(ErrorCode.VALIDATION_FAILED, 'Student not found')
+    }
+
+    // Get packages and bookings for this student
+    const packages = await deps.packageRepo.listByStudent(studentId)
+    const upcomingBookings = await deps.bookingRepo.listUpcomingByStudent(studentId)
+    
+    // Build courses summary
+    const coursesMap = new Map()
+    for (const pkg of packages) {
+      if (!coursesMap.has(pkg.courseId)) {
+        const nextBooking = upcomingBookings.find((b: any) => b.courseId === pkg.courseId)
+        coursesMap.set(pkg.courseId, {
+          courseId: pkg.courseId,
+          courseName: pkg.courseName,
+          durationMinutes: 0, // TODO: get from course
+          allowSelfBooking: true, // TODO: get from course
+          remaining: 0,
+          purchased: null,
+          batchCount: 0,
+          available: 0,
+          exhausted: false,
+          fullyReserved: false,
+          nextBooking: nextBooking || null
+        })
+      }
+      const course = coursesMap.get(pkg.courseId)
+      course.remaining += pkg.remainingSessions
+      course.batchCount++
+      if (pkg.status === 'Active') {
+        course.purchased = course.batchCount === 1 ? pkg.purchasedSessions : null
+      }
+    }
+
+    const cards = [{
+      teacherId,
+      teacherName: teacher.name,
+      teacherAvatarUrl: teacher.avatar || null,
+      studentId,
+      studentName: student.student.name,
+      courses: Array.from(coursesMap.values()),
+      remainingTotal: Array.from(coursesMap.values()).reduce((sum: number, c: any) => sum + c.remaining, 0)
+    }]
 
     res.json(
       createSuccessEnvelope(
         {
-          upcomingBooking: upcomingBookings[0] || null,
-          recentBookings,
-          balance: balanceSummary,
+          cards,
+          bound: student.student.bound
         },
         req.requestId
       )
@@ -321,14 +362,19 @@ export function createSessionRouter(deps: {
   /**
    * GET /v1/me/student-bookings
    * 
-   * Get student's bookings list
-   * §12.8 Phase 0-2
+   * P0 #7b: Must accept scope parameter and return {upcoming:[]} or {history:[]}
+   * NOT {items, hasMore}
    * 
    * For User principals, requires teacherId query param to resolve student binding
    */
   router.get('/me/student-bookings', authMiddleware, requireAuth, asyncHandler(async (req, res) => {
     const principal = req.principal
-    const { teacherId: queryTeacherId, limit = '20', offset = '0' } = req.query
+    const { teacherId: queryTeacherId, scope } = req.query
+
+    // Validate scope
+    if (!scope || (scope !== 'upcoming' && scope !== 'history')) {
+      throw new AppError(ErrorCode.VALIDATION_FAILED, 'scope parameter required: upcoming or history')
+    }
 
     // Resolve student identity
     let studentId: string | null = null
@@ -356,22 +402,16 @@ export function createSessionRouter(deps: {
       throw new AppError(ErrorCode.FORBIDDEN, 'Student-only endpoint')
     }
 
-    // Get student bookings with pagination
-    const allBookings = await deps.bookingRepo.listByStudent(studentId)
-    
-    const limitNum = parseInt(limit as string)
-    const offsetNum = parseInt(offset as string)
-    const items = allBookings.slice(offsetNum, offsetNum + limitNum)
-
-    res.json(
-      createSuccessEnvelope(
-        {
-          items,
-          hasMore: allBookings.length > offsetNum + limitNum,
-        },
-        req.requestId
-      )
-    )
+    // Get student bookings based on scope
+    if (scope === 'upcoming') {
+      const upcoming = await deps.bookingRepo.listUpcomingByStudent(studentId)
+      res.json(createSuccessEnvelope({ upcoming }, req.requestId))
+    } else {
+      // history: all non-upcoming bookings
+      const allBookings = await deps.bookingRepo.listByStudent(studentId)
+      const history = allBookings.filter((b: any) => b.status !== 'Upcoming')
+      res.json(createSuccessEnvelope({ history }, req.requestId))
+    }
   }))
 
   return router

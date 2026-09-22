@@ -59,7 +59,9 @@ export interface BookingRepository {
   create(
     data: CreateBookingRequest,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView>
 
   /**
@@ -69,7 +71,9 @@ export interface BookingRepository {
   complete(
     bookingId: string,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView>
 
   /**
@@ -89,7 +93,9 @@ export interface BookingRepository {
   undoCompletion(
     bookingId: string,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView>
 
   /**
@@ -99,7 +105,9 @@ export interface BookingRepository {
   cancel(
     bookingId: string,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView>
 
   /**
@@ -110,7 +118,9 @@ export interface BookingRepository {
     bookingId: string,
     data: RescheduleBookingRequest,
     principal: Principal,
-    idempotencyKey: string
+    idempotencyKey: string,
+    endpoint?: string,
+    requestHash?: string
   ): Promise<BookingView>
 
   /**

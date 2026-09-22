@@ -78,10 +78,14 @@ export function createBookingRouter(deps: {
 
       // Create booking via repository (source derived as TeacherCreated)
       const idempotencyKey = (req as any).idempotencyKey
+      const endpoint = (req as any).endpoint
+      const requestHash = (req as any).requestHash
       const booking = await deps.bookingRepo.create(
         { studentId, courseId, startAt },
         principal,
-        idempotencyKey
+        idempotencyKey,
+        endpoint,
+        requestHash
       )
 
       res.json(createSuccessEnvelope({ booking, bookingId: booking.bookingId }, req.requestId))
@@ -96,10 +100,14 @@ export function createBookingRouter(deps: {
 
       // Create booking via repository (source derived as SelfBooked)
       const idempotencyKey = (req as any).idempotencyKey
+      const endpoint = (req as any).endpoint
+      const requestHash = (req as any).requestHash
       const booking = await deps.bookingRepo.create(
         { courseId, startAt },
         principal,
-        idempotencyKey
+        idempotencyKey,
+        endpoint,
+        requestHash
       )
 
       res.json(createSuccessEnvelope({ booking, bookingId: booking.bookingId }, req.requestId))
@@ -162,8 +170,10 @@ export function createBookingRouter(deps: {
     const { bookingId } = req.params
     const principal = req.principal
     const idempotencyKey = (req as any).idempotencyKey
+    const endpoint = (req as any).endpoint
+    const requestHash = (req as any).requestHash
 
-    const result = await deps.bookingRepo.complete(bookingId, principal, idempotencyKey)
+    const result = await deps.bookingRepo.complete(bookingId, principal, idempotencyKey, endpoint, requestHash)
 
     res.json(createSuccessEnvelope(result, req.requestId))
   }))
@@ -178,8 +188,10 @@ export function createBookingRouter(deps: {
     const { bookingId } = req.params
     const principal = req.principal
     const idempotencyKey = (req as any).idempotencyKey
+    const endpoint = (req as any).endpoint
+    const requestHash = (req as any).requestHash
 
-    const result = await deps.bookingRepo.undoCompletion(bookingId, principal, idempotencyKey)
+    const result = await deps.bookingRepo.undoCompletion(bookingId, principal, idempotencyKey, endpoint, requestHash)
 
     res.json(createSuccessEnvelope(result, req.requestId))
   }))
@@ -195,8 +207,10 @@ export function createBookingRouter(deps: {
     const { reason } = req.body
     const principal = req.principal
     const idempotencyKey = (req as any).idempotencyKey
+    const endpoint = (req as any).endpoint
+    const requestHash = (req as any).requestHash
 
-    const result = await deps.bookingRepo.cancel(bookingId, principal, idempotencyKey)
+    const result = await deps.bookingRepo.cancel(bookingId, principal, idempotencyKey, endpoint, requestHash)
 
     res.json(createSuccessEnvelope(result, req.requestId))
   }))
@@ -212,8 +226,10 @@ export function createBookingRouter(deps: {
     const { newStartAt } = req.body
     const principal = req.principal
     const idempotencyKey = (req as any).idempotencyKey
+    const endpoint = (req as any).endpoint
+    const requestHash = (req as any).requestHash
 
-    const result = await deps.bookingRepo.reschedule(bookingId, { newStartAt }, principal, idempotencyKey)
+    const result = await deps.bookingRepo.reschedule(bookingId, { newStartAt }, principal, idempotencyKey, endpoint, requestHash)
 
     res.json(createSuccessEnvelope(result, req.requestId))
   }))
