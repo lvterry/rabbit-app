@@ -17,7 +17,7 @@ import type {
 import { createAuthRouter } from './auth'
 import { createInviteRouter } from './invite'
 import { createBookingRouter } from './booking'
-import { createSlotsRouter } from './slots-simple'
+import { createSlotsRouter } from './slots'
 import { createTeacherRouter } from './teacher'
 import { createStudentRouter } from './student'
 import { createCourseRouter } from './course'
@@ -45,7 +45,7 @@ export function createApiRouter(deps: RouteDependencies): Router {
   router.use('/auth', createAuthRouter(deps))
   router.use('/invites', createInviteRouter(deps))
   router.use('/bookings', createBookingRouter(deps))
-  router.use('/teachers', createSlotsRouter())
+  router.use('/teachers', createSlotsRouter(deps))
   router.use('/me/teacher', createTeacherRouter(deps))
   router.use('/students', createStudentRouter(deps))
   router.use('/courses', createCourseRouter(deps))
