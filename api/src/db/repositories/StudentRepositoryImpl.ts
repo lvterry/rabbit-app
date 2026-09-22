@@ -42,7 +42,7 @@ export class StudentRepositoryImpl {
   async findById(studentId: string): Promise<StudentDetailView | null> {
     const studentResult = await this.pool.query(
       `SELECT s.id, s.name, s.contact, s.status, s.user_id, s.bound_at, s.teacher_id,
-              u.nickname as bound_name, u.email as bound_email
+              u.nickname as bound_name, u.nickname as bound_email
        FROM student s
        LEFT JOIN app_user u ON s.user_id = u.id
        WHERE s.id = $1`,
