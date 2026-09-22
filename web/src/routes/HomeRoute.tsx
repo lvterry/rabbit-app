@@ -66,7 +66,6 @@ export function HomeRoute(_props: HomeRouteProps) {
         <EmptyState
           title="你还没有加入任何老师"
           message="需要从老师分享的链接进入"
-          playful
         />
       </Layout>
     )

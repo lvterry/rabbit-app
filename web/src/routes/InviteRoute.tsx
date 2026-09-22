@@ -83,64 +83,6 @@ export function InviteRoute({ token: tokenProp }: InviteRouteProps) {
     // Replace URL to / immediately (don't keep token in URL)
     history.replaceState(null, '', response.data.redirectTo)
     route(response.data.redirectTo, true)
-
-    // Show bookmark prompt once
-    setTimeout(() => {
-      const shouldPrompt = !localStorage.getItem('bookmarkPromptShown')
-      if (shouldPrompt) {
-        localStorage.setItem('bookmarkPromptShown', 'true')
-        // Simple closeable prompt instead of alert
-        const overlay = document.createElement('div')
-        overlay.style.cssText = `
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 9999;
-          padding: var(--spacing-lg);
-        `
-        overlay.innerHTML = `
-          <div style="
-            background: var(--color-surface);
-            border-radius: var(--radius-lg);
-            padding: var(--spacing-xl);
-            max-width: 320px;
-            text-align: center;
-            box-shadow: var(--shadow-lg);
-          ">
-            <div style="font-size: 40px; margin-bottom: var(--spacing-md);">🔖</div>
-            <div style="
-              font-size: var(--font-size-lg);
-              font-weight: var(--font-weight-semibold);
-              margin-bottom: var(--spacing-sm);
-            ">加入书签</div>
-            <div style="
-              font-size: var(--font-size-sm);
-              color: var(--color-text-secondary);
-              margin-bottom: var(--spacing-lg);
-              line-height: var(--line-height-relaxed);
-            ">把这一页加入书签或添加到主屏幕，下次可以直接进入</div>
-            <button style="
-              width: 100%;
-              padding: var(--spacing-md);
-              background: var(--color-primary);
-              color: white;
-              border: none;
-              border-radius: var(--radius-md);
-              font-weight: var(--font-weight-semibold);
-              cursor: pointer;
-              min-height: var(--tap-target-min);
-            " onclick="this.parentElement.parentElement.remove()">知道了</button>
-          </div>
-        `
-        document.body.appendChild(overlay)
-      }
-    }, 500)
   }
 
   if (loading) {

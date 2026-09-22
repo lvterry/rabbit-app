@@ -122,7 +122,6 @@ export function BookingsRoute(_props: BookingsRouteProps) {
           <EmptyState
             title={scope === 'upcoming' ? '暂无进行中的课程' : '暂无历史课程'}
             message={scope === 'upcoming' ? '预约课程后会显示在这里' : '已完成的课程会显示在这里'}
-            playful
           />
         ) : (
           <div>

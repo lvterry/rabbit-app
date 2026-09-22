@@ -10,14 +10,13 @@
   --color-primary-dark: #0D8040;
   
   /* Accent Colors */
-  --color-yellow: #FFD04A;
+  --color-yellow: #F8C020;
   --color-yellow-light: #FFF9E5;
   
   /* Success/Status Colors */
   --color-success: #10A050;
-  --color-warning: #FFD04A;
-  --color-danger: #FF3B30;
-  --color-info: #5AC8FA;
+  --color-warning: #C98500;
+  --color-danger: #D94841;
   
   /* Text Colors */
   --color-text: #1A1A1A;
@@ -25,8 +24,8 @@
   --color-text-tertiary: #9B9B9B;
   
   /* Background Colors - Paper-like */
-  --color-background: #FFFFFF;
-  --color-background-secondary: #F8F8F6;
+  --color-background: #F7F6F3;
+  --color-background-secondary: #F7F6F3;
   --color-background-tertiary: #F0F0ED;
   --color-surface: #FFFFFF;
   
@@ -91,6 +90,7 @@
 }
 
 /* Dark mode support (if needed in future) */
+/* Dark mode support (future) */
 @media (prefers-color-scheme: dark) {
   :root {
     --color-text: #FFFFFF;

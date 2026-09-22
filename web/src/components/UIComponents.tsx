@@ -183,7 +183,7 @@ export function DatePicker({ days, onSelectDate, selectedDate }: DatePickerProps
 }
 
 /**
- * Empty state with optional playful copy
+ * Empty state with optional action
  */
 interface EmptyStateProps {
   title: string
@@ -192,23 +192,13 @@ interface EmptyStateProps {
     text: string
     onClick: () => void
   }
-  playful?: boolean
 }
 
-export function EmptyState({ title, message, action, playful = false }: EmptyStateProps) {
+export function EmptyState({ title, message, action }: EmptyStateProps) {
   return (
     <div class="empty-state" style={{
       minHeight: '300px',
     }}>
-      {playful && (
-        <div style={{
-          fontSize: '48px',
-          marginBottom: 'var(--spacing-md)',
-        }}>
-          🐰
-        </div>
-      )}
-      
       <div class="empty-state-title">
         {title}
       </div>
