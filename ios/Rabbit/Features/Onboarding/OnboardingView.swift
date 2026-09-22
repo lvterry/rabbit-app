@@ -8,10 +8,11 @@ struct OnboardingView: View {
         VStack(spacing: 32) {
             Spacer()
             
-            // Logo or icon
-            Image(systemName: "calendar.badge.clock")
-                .font(.system(size: 80))
-                .foregroundStyle(.blue)
+            // Rabbit mascot logo
+            Image("RabbitLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 120, height: 120)
             
             VStack(spacing: 16) {
                 Text("欢迎使用 Rabbit")
