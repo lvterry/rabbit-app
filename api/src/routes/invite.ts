@@ -18,6 +18,9 @@ import {
   generateStudentAccessToken,
   generateStudentRefreshToken,
   createInviteTokenPrincipal,
+  createPublicPrincipal,
+  createStudentPrincipal,
+  getTeacherIdFromPrincipal,
 } from '../auth'
 
 export function createInviteRouter(deps: {
@@ -227,17 +230,10 @@ export function createInviteRouter(deps: {
     const { inviteId } = req.params
     const principal = req.principal
 
-    // Only teachers can revoke invites
-    if (principal.kind !== 'User' || !principal.userId) {
-      throw new AppError(ErrorCode.FORBIDDEN, 'Only teachers can revoke invites')
-    }
+    // Assert user has teacher capability (repository enforces ownership)
+    const teacherId = await getTeacherIdFromPrincipal(principal, deps.teacherRepo)
 
-    const teacher = await deps.teacherRepo.findByUserId(principal.userId)
-    if (!teacher) {
-      throw new AppError(ErrorCode.FORBIDDEN, 'User does not have teacher capability')
-    }
-
-    // Revoke the invite via repository
+    // Revoke the invite via repository (repository checks ownership)
     await deps.studentRepo.revokeInvite(inviteId)
 
     res.json(

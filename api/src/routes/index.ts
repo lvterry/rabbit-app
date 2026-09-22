@@ -63,7 +63,12 @@ export function createApiRouter(deps: RouteDependencies): Router {
   router.use('/bookings', createBookingRouter(deps))
   router.use('/teachers', createSlotsRouter(deps))
   router.use('/me/teacher', createTeacherRouter(deps))
-  router.use('/students', createStudentRouter(deps))
+  router.use('/students', createStudentRouter({
+    studentRepo: deps.studentRepo,
+    courseRepo: deps.courseRepo,
+    packageRepo: deps.packageRepo,
+    teacherRepo: deps.teacherRepo,
+  }))
   router.use('/courses', createCourseRouter(deps))
   router.use('/availability', createAvailabilityRouter(deps))
   

@@ -22,7 +22,6 @@ import type { BookingRepository, TeacherRepository, StudentRepository, Idempoten
 import { createSuccessEnvelope, AppError, asyncHandler } from '../http'
 import { ErrorCode } from '@rabbit/shared'
 import { authMiddleware, requireAuth, requireIdempotencyKey } from '../middleware'
-import { canActAsTeacher } from '../auth'
 
 export function createBookingRouter(deps: {
   bookingRepo: BookingRepository

@@ -54,7 +54,10 @@ async function startServer() {
   const bookingRepo = new BookingRepositoryImpl(pool)
   const idempotencyRepo = new IdempotencyRepositoryImpl(pool)
 
-  // Idempotency middleware (before routes)
+  // Auth middleware MUST run before idempotency (idempotency needs req.principal)
+  app.use(authMiddleware)
+
+  // Idempotency middleware (after auth, before routes)
   app.use(createIdempotencyMiddleware(idempotencyRepo))
 
   // Mount API routes at /v1
@@ -69,7 +72,7 @@ async function startServer() {
     pool,
   })
   
-  app.use('/v1', authMiddleware, apiRouter)
+  app.use('/v1', apiRouter)
 
   // Health check
   app.get('/health', (req, res) => {
