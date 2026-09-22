@@ -19,7 +19,7 @@
 
 import { Router } from 'express'
 import type { BookingRepository, TeacherRepository, StudentRepository, IdempotencyRepository } from '../ports'
-import { createSuccessEnvelope, AppError } from '../http'
+import { createSuccessEnvelope, AppError, asyncHandler } from '../http'
 import { ErrorCode } from '@rabbit/shared'
 import { authMiddleware, requireAuth, requireIdempotencyKey } from '../middleware'
 import { canActAsTeacher } from '../auth'
@@ -43,9 +43,15 @@ export function createBookingRouter(deps: {
    * 
    * Requires: Idempotency-Key header
    */
-  router.post('/', authMiddleware, requireAuth, requireIdempotencyKey, async (req, res) => {
+  router.post('/', authMiddleware, requireAuth, requireIdempotencyKey, asyncHandler(async (req, res) => {
     const principal = req.principal
     const { studentId, courseId, startAt, source, by, asTeacher } = req.body
+
+    // Debug logging for tests
+    if (!principal || !principal.kind) {
+      console.error('[Booking] Invalid principal:', principal)
+      throw new AppError(ErrorCode.INTERNAL, 'Principal not set correctly')
+    }
 
     // Reject forbidden identity fields (parallel-plan-v2.md §19)
     if (source !== undefined || by !== undefined || asTeacher !== undefined) {
@@ -56,7 +62,7 @@ export function createBookingRouter(deps: {
     }
 
     // Determine booking path
-    const isTeacherPath = principal.kind === 'User' && (await deps.teacherRepo.findByUserId(principal.userId!)) !== null
+    const isTeacherPath = principal.kind === 'User' && principal.userId && (await deps.teacherRepo.findByUserId(principal.userId)) !== null
 
     if (isTeacherPath) {
       // Teacher代约 path - studentId REQUIRED
@@ -95,7 +101,7 @@ export function createBookingRouter(deps: {
 
       res.json(createSuccessEnvelope({ booking, bookingId: booking.bookingId }, req.requestId))
     }
-  })
+  }))
 
   /**
    * GET /v1/bookings/:bookingId

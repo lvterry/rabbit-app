@@ -22,12 +22,38 @@ import type { IdempotencyRepository } from '../ports'
  * Line 840-863: Handles 23505 from recordSuccess during route execution
  */
 export function createErrorHandler(idempotencyRepo?: IdempotencyRepository) {
-  return async (
+  return (
     error: unknown,
     req: Request,
     res: Response,
     next: NextFunction
-  ): Promise<void> => {
+  ): void => {
+    // Wrap async logic to prevent unhandled promise rejections
+    handleErrorAsync(error, req, res, next, idempotencyRepo).catch(err => {
+      console.error('[ErrorHandler] Fatal error in error handler:', err)
+      if (!res.headersSent) {
+        res.status(500).json({
+          ok: false,
+          code: 'INTERNAL',
+          message: 'Internal server error',
+          retryable: false,
+          requestId: req.requestId || 'unknown'
+        })
+      }
+    })
+  }
+}
+
+/**
+ * Async error handling logic
+ */
+async function handleErrorAsync(
+  error: unknown,
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  idempotencyRepo?: IdempotencyRepository
+): Promise<void> {
     const requestId = req.requestId || 'unknown'
 
     // Check for idempotency 23505 race (from recordSuccess in route)
@@ -95,7 +121,6 @@ export function createErrorHandler(idempotencyRepo?: IdempotencyRepository) {
     }
 
     res.status(httpStatus).json(envelope)
-  }
 }
 
 /**

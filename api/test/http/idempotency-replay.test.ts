@@ -78,7 +78,11 @@ describe('Real HTTP - Idempotency', () => {
         courseId: 'course-123',
         startAt: '2026-09-25T10:00:00Z',
       })
-      .expect(200)
+
+    if (response1.status !== 200) {
+      console.error('First request failed:', response1.status, response1.body)
+    }
+    expect(response1.status).toBe(200)
 
     const bookingId1 = response1.body.data.bookingId
 

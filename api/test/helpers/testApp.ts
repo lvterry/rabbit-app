@@ -9,7 +9,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import { Pool } from 'pg'
 import { createApiRouter } from '../../src/routes'
-import { authMiddleware, createIdempotencyMiddleware, errorHandler } from '../../src/middleware'
+import { authMiddleware, createIdempotencyMiddleware, createErrorHandler } from '../../src/middleware'
 import { requestIdMiddleware } from '../../src/middleware/requestId'
 
 // Mock repositories for testing
@@ -44,14 +44,14 @@ export function createTestApp(repos: {
   app.use(cookieParser())
   app.use(requestIdMiddleware)
 
-  // Idempotency middleware
+  // Idempotency middleware (before routes)
   app.use(createIdempotencyMiddleware(repos.idempotencyRepo))
 
-  // API routes
-  app.use('/v1', createApiRouter(repos))
+  // API routes (authMiddleware is inside createApiRouter)
+  app.use('/v1', authMiddleware, createApiRouter(repos))
 
-  // Error handler
-  app.use(errorHandler)
+  // Error handler (with idempotency support for 23505 handling)
+  app.use(createErrorHandler(repos.idempotencyRepo))
 
   return app
 }
