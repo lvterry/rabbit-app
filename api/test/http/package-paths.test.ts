@@ -28,6 +28,24 @@ describe('Real HTTP - Package Paths', () => {
       listTransactionsByStudent: async () => [],
     } as any
 
+    // Custom mock pool that returns teacher_id for authorization checks
+    const mockPool = {
+      query: async (sql: string, params?: any[]) => {
+        // Handle authorization queries for packages and students
+        if (sql.includes('SELECT teacher_id FROM lesson_package')) {
+          return { rows: [{ teacher_id: 'teacher-1' }], rowCount: 1 } as any
+        }
+        if (sql.includes('SELECT teacher_id FROM student')) {
+          return { rows: [{ teacher_id: 'teacher-1' }], rowCount: 1 } as any
+        }
+        return { rows: [], rowCount: 0 } as any
+      },
+      connect: async () => ({
+        query: async () => ({ rows: [], rowCount: 0 }),
+        release: () => {},
+      } as any),
+    } as any
+
     app = createTestApp({
       teacherRepo: mockTeacherRepo,
       courseRepo: {} as any,
@@ -36,7 +54,7 @@ describe('Real HTTP - Package Paths', () => {
       packageRepo: mockPackageRepo,
       bookingRepo: {} as any,
       idempotencyRepo: {} as any,
-      pool: createMockPool(),
+      pool: mockPool,
     })
   })
 

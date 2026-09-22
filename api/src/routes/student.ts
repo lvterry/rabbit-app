@@ -102,11 +102,11 @@ export function createStudentRouter(deps: {
   }))
 
   /**
-   * POST /v1/students/:studentId/invite
+   * P0 #7c: POST /v1/students/:studentId/invites (plural)
    * 
    * Create/regenerate invite for student (teacher only)
    */
-  router.post('/:studentId/invite', authMiddleware, requireUser, asyncHandler(async (req, res) => {
+  router.post('/:studentId/invites', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const { studentId } = req.params
     const principal = req.principal
 

@@ -89,25 +89,30 @@ describe('computeBookingActions', () => {
       expect(actions.canUndoComplete).toBe(false)
     })
 
-    it('should not allow cancel outside free window', () => {
+    it('should allow cancel before start (even if late)', () => {
+      // Student can cancel anytime before start (it's just FREE vs LATE policy)
+      // Per docs/mvp.md §10.6 and §11
       const soonBooking: BookingView = {
         ...baseBooking,
-        startAt: '2026-03-03T01:00:00Z',
+        startAt: '2026-03-03T01:00:00Z', // 1 hour away
       }
 
       const actions = computeBookingActions(soonBooking, 'Student', 48, 7, now)
-      expect(actions.canCancel).toBe(false)
-      expect(actions.canReschedule).toBe(false)
+      expect(actions.canCancel).toBe(true) // Can cancel (will be LATE_CANCEL)
+      expect(actions.canReschedule).toBe(true) // Can reschedule
     })
 
     it('should not allow reschedule if at max count', () => {
       const maxRescheduledBooking: BookingView = {
         ...baseBooking,
-        rescheduleCount: 2,
+        rescheduleCount: 2, // Already rescheduled 2 times
       }
 
-      const actions = computeBookingActions(maxRescheduledBooking, 'Student', 48, 2, now)
+      // maxReschedules = 2, rescheduleCount = 2, so at limit
+      // Parameters: (booking, capability, maxReschedules, undoCompleteDays, now)
+      const actions = computeBookingActions(maxRescheduledBooking, 'Student', 2, 7, now)
       expect(actions.canReschedule).toBe(false)
+      expect(actions.rescheduleLimitReached).toBe(true)
     })
 
     it('should never allow student to complete or undo', () => {

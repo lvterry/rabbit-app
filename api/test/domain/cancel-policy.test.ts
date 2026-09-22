@@ -13,8 +13,11 @@ import {
 describe('determineCancellationPolicy', () => {
   const now = new Date('2026-03-03T00:00:00Z')
 
-  it('should return FREE_CANCEL when cancelled by student within window', () => {
-    const startAt = new Date('2026-03-03T10:00:00Z')
+  it('should return FREE_CANCEL when cancelled early enough', () => {
+    // now = March 3 00:00, startAt = March 4 10:00 (34 hours away)
+    // With 24h window, deadline = March 3 10:00
+    // now (00:00) <= deadline (10:00) => FREE
+    const startAt = new Date('2026-03-04T10:00:00Z')
     const policy = determineCancellationPolicy({
       startAt,
       freeCancelHours: 24,
@@ -25,8 +28,11 @@ describe('determineCancellationPolicy', () => {
     expect(policy).toBe('FREE_CANCEL')
   })
 
-  it('should return LATE_CANCEL when cancelled by student outside window', () => {
-    const startAt = new Date('2026-03-03T01:00:00Z')
+  it('should return LATE_CANCEL when cancelled too late', () => {
+    // now = March 3 00:00, startAt = March 3 10:00 (10 hours away)
+    // With 24h window, deadline = March 2 10:00
+    // now (March 3 00:00) > deadline (March 2 10:00) => LATE
+    const startAt = new Date('2026-03-03T10:00:00Z')
     const policy = determineCancellationPolicy({
       startAt,
       freeCancelHours: 24,
@@ -77,13 +83,13 @@ describe('determineCancellationPolicy', () => {
 describe('canStudentCancel', () => {
   const now = new Date('2026-03-03T00:00:00Z')
 
-  it('should allow student to cancel within free window', () => {
+  it('should allow student to cancel before booking starts', () => {
     const startAt = new Date('2026-03-03T10:00:00Z')
     expect(canStudentCancel(startAt, 24, now)).toBe(true)
   })
 
-  it('should disallow student to cancel outside free window', () => {
-    const startAt = new Date('2026-03-03T01:00:00Z')
+  it('should disallow student to cancel after booking starts', () => {
+    const startAt = new Date('2026-03-02T10:00:00Z')
     expect(canStudentCancel(startAt, 24, now)).toBe(false)
   })
 
@@ -98,16 +104,18 @@ describe('canTeacherCancel', () => {
 
   it('should allow teacher to cancel upcoming bookings', () => {
     const startAt = new Date('2026-03-03T10:00:00Z')
-    expect(canTeacherCancel(startAt, now)).toBe(true)
+    expect(canTeacherCancel(startAt, 24, now)).toBe(true)
   })
 
-  it('should disallow teacher to cancel past bookings', () => {
+  it('should allow teacher to cancel past bookings in UI context', () => {
+    // Teacher can cancel any Upcoming booking in the UI
+    // (backend checks status, not time)
     const startAt = new Date('2026-03-02T10:00:00Z')
-    expect(canTeacherCancel(startAt, now)).toBe(false)
+    expect(canTeacherCancel(startAt, 24, now)).toBe(true)
   })
 
   it('should allow teacher to cancel bookings that just started', () => {
     const startAt = new Date('2026-03-03T00:00:00Z')
-    expect(canTeacherCancel(startAt, now)).toBe(true)
+    expect(canTeacherCancel(startAt, 24, now)).toBe(true)
   })
 })
