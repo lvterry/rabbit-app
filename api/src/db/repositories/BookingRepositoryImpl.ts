@@ -643,7 +643,7 @@ export class BookingRepositoryImpl implements BookingRepository {
         [bookingId]
       )
 
-      // P0 #5: Record idempotency success (use middleware values)
+      // P0 #5: Record idempotency success BEFORE COMMIT (Write A requirement)
       const finalEndpoint = endpoint || `POST /v1/bookings/${bookingId}/completion`
       const finalRequestHash = requestHash || (() => {
         const crypto = require('crypto')
@@ -651,17 +651,10 @@ export class BookingRepositoryImpl implements BookingRepository {
           .update(JSON.stringify({ bookingId }))
           .digest('hex')
       })()
-
-      await client.query('COMMIT')
-
-      // Fetch full result first
-      const result = await this.findById(bookingId)
       
-      // Write idempotency record with full response (after COMMIT)
-      // Column is JSONB, so pass the parsed object directly (not stringified)
-      const responseData = { ok: true, data: result || { bookingId } }
+      // Insert idempotency record inside transaction (using client, not this.pool)
       try {
-        await this.pool.query(
+        await client.query(
           `INSERT INTO idempotency_record (
             user_id, student_id, idempotency_key, endpoint,
             request_hash, response_status, response_body, state
@@ -672,13 +665,17 @@ export class BookingRepositoryImpl implements BookingRepository {
             idempotencyKey,
             finalEndpoint,
             finalRequestHash,
-            responseData
+            JSON.stringify({ ok: true, data: { bookingId, status: 'Completed' } })
           ]
         )
       } catch (idemError: any) {
         if (idemError.code !== '23505') throw idemError
       }
-      
+
+      await client.query('COMMIT')
+
+      // Fetch and return full view (after commit)
+      const result = await this.findById(bookingId)
       return result!
 
     } catch (error) {
