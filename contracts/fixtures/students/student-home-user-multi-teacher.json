@@ -1,41 +1,55 @@
 {
   "ok": true,
   "data": {
-    "studentId": "650e8400-e29b-41d4-a716-446655440002",
-    "studentName": "李同学",
-    "hasBoundAccount": true,
-    "courses": [
+    "cards": [
       {
-        "courseId": "750e8400-e29b-41d4-a716-446655440003",
-        "courseName": "西班牙语一对一",
-        "durationMinutes": 60,
         "teacherId": "550e8400-e29b-41d4-a716-446655440001",
         "teacherName": "王老师",
-        "teacherAvatar": null,
-        "balance": {
-          "remaining": 8,
-          "reserved": null,
-          "available": 6
-        },
-        "nextBooking": null,
-        "allowSelfBooking": true
+        "teacherAvatarUrl": null,
+        "studentId": "650e8400-e29b-41d4-a716-446655440002",
+        "studentName": "李同学",
+        "courses": [
+          {
+            "courseId": "750e8400-e29b-41d4-a716-446655440003",
+            "courseName": "西班牙语一对一",
+            "durationMinutes": 60,
+            "allowSelfBooking": true,
+            "remaining": 8,
+            "purchased": null,
+            "batchCount": 1,
+            "available": 6,
+            "exhausted": false,
+            "fullyReserved": false,
+            "nextBooking": null
+          }
+        ],
+        "remainingTotal": 8
       },
       {
-        "courseId": "750e8400-e29b-41d4-a716-446655440013",
-        "courseName": "法语口语",
-        "durationMinutes": 60,
         "teacherId": "550e8400-e29b-41d4-a716-446655440011",
         "teacherName": "陈老师",
-        "teacherAvatar": null,
-        "balance": {
-          "remaining": 5,
-          "reserved": null,
-          "available": 4
-        },
-        "nextBooking": null,
-        "allowSelfBooking": true
+        "teacherAvatarUrl": null,
+        "studentId": "650e8400-e29b-41d4-a716-446655440012",
+        "studentName": "李同学",
+        "courses": [
+          {
+            "courseId": "750e8400-e29b-41d4-a716-446655440013",
+            "courseName": "法语口语",
+            "durationMinutes": 60,
+            "allowSelfBooking": true,
+            "remaining": 5,
+            "purchased": null,
+            "batchCount": 1,
+            "available": 4,
+            "exhausted": false,
+            "fullyReserved": false,
+            "nextBooking": null
+          }
+        ],
+        "remainingTotal": 5
       }
-    ]
+    ],
+    "bound": true
   },
   "meta": {
     "generatedAt": "2026-02-20T02:11:00Z",

@@ -1,11 +1,18 @@
 {
   "ok": true,
   "data": {
-    "date": "2026-03-04",
+    "date": "2026-03-03",
+    "dateLabel": "3月3日周二",
     "timezone": "Asia/Shanghai",
     "generatedAt": "2026-02-20T02:11:00Z",
     "reason": "NO_AVAILABILITY",
-    "slots": []
+    "reasonText": "老师近期还没有开放时间，请联系老师",
+    "slots": [],
+    "balance": {
+      "remaining": 10,
+      "reserved": null,
+      "available": 10
+    }
   },
   "meta": {
     "generatedAt": "2026-02-20T02:11:00Z",

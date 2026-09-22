@@ -1,8 +1,13 @@
 {
   "ok": true,
   "data": {
-    "version": "1.0.0",
-    "minSupportedVersion": "1.0.0",
+    "minIOSVersion": "1.0.0",
+    "minWebBuild": "2026.02.20",
+    "features": {
+      "multiTeacherHome": true,
+      "apnsPush": true,
+      "emailMagicLink": true
+    },
     "serverTime": "2026-02-20T02:11:00Z"
   },
   "meta": {

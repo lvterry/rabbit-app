@@ -26,7 +26,6 @@ export const MAX_TEACHER_NAME_LENGTH = 100
 export const MAX_BIO_LENGTH = 500
 export const MIN_DURATION_MINUTES = 15
 export const MAX_DURATION_MINUTES = 240
-export const MAX_RESCHEDULES = 10
 export const IDEMPOTENCY_KEY_TTL_HOURS = 24
 
 // ============================================================================

@@ -17,8 +17,8 @@ const fixturesRoot = join(__dirname, '../contracts/fixtures')
 // Map fixtures to their corresponding schemas
 const fixtureMap: Record<string, { type: 'success' | 'error'; schema?: string; expectedCode?: string }> = {
   'meta.json': { type: 'success', schema: 'metaResponseSchema' },
-  'auth/me-user-teacher.json': { type: 'success', schema: 'teacherProfileSchema' },
-  'auth/me-user-teacher-and-student.json': { type: 'success', schema: 'teacherProfileSchema' },
+  'auth/me-user-teacher.json': { type: 'success', schema: 'meResponseSchema' },
+  'auth/me-user-teacher-and-student.json': { type: 'success', schema: 'meResponseSchema' },
   'invites/pending.json': { type: 'success', schema: 'invitePreviewSchema' },
   'invites/consumed-matching-session.json': { type: 'success', schema: 'invitePreviewSchema' },
   'invites/consumed-foreign-session-error.json': { type: 'error', expectedCode: 'INVITE_CONSUMED' },

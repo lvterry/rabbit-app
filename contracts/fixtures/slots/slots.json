@@ -2,9 +2,11 @@
   "ok": true,
   "data": {
     "date": "2026-03-03",
+    "dateLabel": "3月3日周二",
     "timezone": "Asia/Shanghai",
     "generatedAt": "2026-02-20T02:11:00Z",
     "reason": null,
+    "reasonText": null,
     "slots": [
       {
         "startAt": "2026-03-03T06:00:00Z",
@@ -46,7 +48,12 @@
         "timeRange": "17:00-18:00",
         "label": "17:00"
       }
-    ]
+    ],
+    "balance": {
+      "remaining": 10,
+      "reserved": 2,
+      "available": 8
+    }
   },
   "meta": {
     "generatedAt": "2026-02-20T02:11:00Z",

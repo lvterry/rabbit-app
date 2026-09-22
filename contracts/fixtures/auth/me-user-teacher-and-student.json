@@ -1,20 +1,37 @@
 {
   "ok": true,
   "data": {
-    "teacherId": "550e8400-e29b-41d4-a716-446655440001",
-    "userId": "550e8400-e29b-41d4-a716-446655440000",
-    "name": "王老师",
-    "avatar": null,
-    "bio": "专业西班牙语教学10年，同时学习法语",
-    "timezone": "Asia/Shanghai",
-    "slotStepMinutes": 30,
-    "minLeadHours": 2,
-    "maxAdvanceDays": 30,
-    "freeCancelHours": 24,
-    "autoSettleHours": 24,
-    "undoCompleteDays": 7,
-    "maxReschedules": 3,
-    "status": "Active"
+    "user": {
+      "userId": "550e8400-e29b-41d4-a716-446655440000",
+      "nickname": "王老师",
+      "avatarUrl": null
+    },
+    "isTeacher": true,
+    "teacher": {
+      "teacherId": "550e8400-e29b-41d4-a716-446655440001",
+      "userId": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "王老师",
+      "avatar": null,
+      "bio": "专业西班牙语教学10年",
+      "timezone": "Asia/Shanghai",
+      "slotStepMinutes": 30,
+      "minLeadHours": 2,
+      "maxAdvanceDays": 30,
+      "freeCancelHours": 24,
+      "autoSettleHours": 24,
+      "undoCompleteDays": 7,
+      "maxReschedules": 3,
+      "status": "Active"
+    },
+    "students": [
+      {
+        "teacherId": "550e8400-e29b-41d4-a716-446655440011",
+        "teacherName": "陈老师",
+        "teacherAvatarUrl": null,
+        "studentId": "650e8400-e29b-41d4-a716-446655440012",
+        "studentName": "王老师"
+      }
+    ]
   },
   "meta": {
     "generatedAt": "2026-02-20T02:11:00Z",

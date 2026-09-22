@@ -183,34 +183,54 @@ export type TeacherProfile = {
 
 export type TeacherDayView = {
   date: string
+  isToday: boolean
   dateLabel: string
-  todayBookings: BookingView[]
-  pendingBookings: BookingView[]
-  nextBooking: BookingView | null
-  bookingCount: number
+  todayCount: number
+  completedCount: number
+  next: BookingView | null
+  bookings: BookingView[]
+  pending: BookingView[]
+  hints: string[]
 }
 
 // ============================================================================
 // Student Views
 // ============================================================================
 
-export type CourseCard = {
+// Student-facing course card (within a StudentHomeCard)
+// per impl-guide.md §5.8 GET /v1/me/student-home
+export type StudentCourseCard = {
   courseId: string
   courseName: string
   durationMinutes: number
-  teacherId: string
-  teacherName: string
-  teacherAvatar: string | null
-  balance: BalanceView
-  nextBooking: BookingView | null
   allowSelfBooking: boolean
+  remaining: number
+  purchased: number | null // null for student-facing views per §6.6
+  batchCount: number
+  available: number
+  exhausted: boolean
+  fullyReserved: boolean
+  nextBooking: BookingView | null
 }
 
-export type StudentHomeView = {
+// Card representing one (teacher, student) relationship
+// Anonymous sessions always have 1 card; multi-teacher users have multiple cards
+export type StudentHomeCard = {
+  teacherId: string
+  teacherName: string
+  teacherAvatarUrl: string | null
   studentId: string
   studentName: string
-  hasBoundAccount: boolean
-  courses: CourseCard[]
+  courses: StudentCourseCard[]
+  remainingTotal: number
+}
+
+// Student home view response (impl-guide.md §5.8)
+// cards.length === 1 for anonymous Student sessions
+// cards.length >= 1 for User sessions (multi-teacher)
+export type StudentHomeView = {
+  cards: StudentHomeCard[]
+  bound: boolean
 }
 
 export type StudentDetailView = {
@@ -334,30 +354,39 @@ export type InvitePreview = {
 }
 
 // ============================================================================
-// Bookable Days Response
+// Bookable Days Response (impl-guide.md §5.7)
 // ============================================================================
 
 export type BookableDayView = {
   date: string
+  dateLabel: string
+  weekday: number
+  weekdayLabel: string
   slotCount: number
 }
 
 export type BookableDaysResponse = {
   timezone: string
   generatedAt: string
+  reason: SlotReason | null
+  reasonText: string | null
   days: BookableDayView[]
+  balance: BalanceView
 }
 
 // ============================================================================
-// Slots Response
+// Slots Response (impl-guide.md §5.7)
 // ============================================================================
 
 export type SlotsResponse = {
   date: string
+  dateLabel: string
   timezone: string
   generatedAt: string
   reason: SlotReason | null
+  reasonText: string | null
   slots: SlotView[]
+  balance: BalanceView
 }
 
 // ============================================================================
@@ -409,8 +438,9 @@ export type CreatePackageRequest = {
 }
 
 export type AddPackageTransactionRequest = {
-  type: PackageTransactionType
-  amount: number
+  mode: 'add' | 'deduct' | 'set'
+  sessions: number
+  type?: PackageTransactionType // required when mode='set'
   note?: string
 }
 
@@ -433,7 +463,8 @@ export type CreateAvailabilityRuleRequest = {
 }
 
 export type CreateAvailabilityExceptionRequest = {
-  date: string
+  onDate: string // YYYY-MM-DD per impl-guide.md §5.4
+  wholeDay?: boolean
   startMinute?: number
   endMinute?: number
   reason?: string
@@ -454,13 +485,13 @@ export type UpdateStudentRequest = {
 
 export type CreateTeacherRequest = {
   name: string
-  avatar?: string
+  avatarUrl?: string
   bio?: string
 }
 
 export type UpdateTeacherRequest = {
   name?: string
-  avatar?: string
+  avatarUrl?: string
   bio?: string
   slotStepMinutes?: number
   minLeadHours?: number
@@ -485,11 +516,42 @@ export type RegisterDeviceResponse = {
 }
 
 // ============================================================================
-// Meta Response
+// Auth Response Types (impl-guide.md §5.1)
+// ============================================================================
+
+export type StudentSummary = {
+  teacherId: string
+  teacherName: string
+  teacherAvatarUrl: string | null
+  studentId: string
+  studentName: string
+}
+
+export type AuthResponse = {
+  userId: string
+  isTeacher: boolean
+  teacher: TeacherProfile | null
+  students: StudentSummary[]
+}
+
+export type MeResponse = {
+  user: {
+    userId: string
+    nickname: string | null
+    avatarUrl: string | null
+  }
+  isTeacher: boolean
+  teacher: TeacherProfile | null
+  students: StudentSummary[]
+}
+
+// ============================================================================
+// Meta Response (impl-guide.md §4.6, §5.1)
 // ============================================================================
 
 export type MetaResponse = {
-  version: string
-  minSupportedVersion: string
+  minIOSVersion: string
+  minWebBuild: string
+  features: Record<string, boolean>
   serverTime: string
 }

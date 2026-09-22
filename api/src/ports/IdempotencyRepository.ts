@@ -4,6 +4,8 @@
  * insert successful idempotency record in the SAME transaction.
  */
 
+import type { Principal } from '@rabbit/shared'
+
 export interface IdempotencyHit {
   requestHash: string
   responseStatus: number
@@ -15,10 +17,10 @@ export interface IdempotencyRepository {
    * Check if an idempotency record exists for this principal + key.
    * Returns the cached response if found (for replay), null otherwise.
    * This is the fast path at the start of the transaction.
+   * Takes Principal to avoid actor-id drift (auth-model.md §5).
    */
   findExisting(
-    userId: string | null,
-    studentId: string | null,
+    principal: Principal,
     endpoint: string,
     idempotencyKey: string
   ): Promise<IdempotencyHit | null>
@@ -26,11 +28,10 @@ export interface IdempotencyRepository {
   /**
    * Record a successful idempotent operation.
    * Called at the END of the business transaction, before commit.
-   * Principal comes from ctx.principal (userId/studentId), not from request body.
+   * Takes Principal from ctx.principal (auth-model.md §5).
    */
   recordSuccess(
-    userId: string | null,
-    studentId: string | null,
+    principal: Principal,
     endpoint: string,
     idempotencyKey: string,
     requestHash: string,

@@ -1,11 +1,18 @@
 {
   "ok": true,
   "data": {
-    "date": "2026-03-05",
+    "date": "2026-03-03",
+    "dateLabel": "3月3日周二",
     "timezone": "Asia/Shanghai",
     "generatedAt": "2026-02-20T02:11:00Z",
     "reason": "FULLY_BOOKED",
-    "slots": []
+    "reasonText": "这一天已经约满了",
+    "slots": [],
+    "balance": {
+      "remaining": 10,
+      "reserved": null,
+      "available": 10
+    }
   },
   "meta": {
     "generatedAt": "2026-02-20T02:11:00Z",

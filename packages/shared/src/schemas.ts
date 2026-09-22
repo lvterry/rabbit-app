@@ -185,23 +185,36 @@ export const teacherProfileSchema = z.object({
   status: teacherStatusSchema,
 })
 
-export const courseCardSchema = z.object({
+// Student-facing course card schema (within a StudentHomeCard)
+export const studentCourseCardSchema = z.object({
   courseId: z.string().uuid(),
   courseName: z.string(),
   durationMinutes: z.number().int().positive(),
-  teacherId: z.string().uuid(),
-  teacherName: z.string(),
-  teacherAvatar: z.string().nullable(),
-  balance: balanceViewSchema,
-  nextBooking: bookingViewSchema.nullable(),
   allowSelfBooking: z.boolean(),
+  remaining: z.number().int().nonnegative(),
+  purchased: z.number().int().nonnegative().nullable(), // null for student-facing views
+  batchCount: z.number().int().nonnegative(),
+  available: z.number().int(),
+  exhausted: z.boolean(),
+  fullyReserved: z.boolean(),
+  nextBooking: bookingViewSchema.nullable(),
 })
 
-export const studentHomeViewSchema = z.object({
+// Card representing one (teacher, student) relationship
+export const studentHomeCardSchema = z.object({
+  teacherId: z.string().uuid(),
+  teacherName: z.string(),
+  teacherAvatarUrl: z.string().nullable(),
   studentId: z.string().uuid(),
   studentName: z.string(),
-  hasBoundAccount: z.boolean(),
-  courses: z.array(courseCardSchema),
+  courses: z.array(studentCourseCardSchema),
+  remainingTotal: z.number().int().nonnegative(),
+})
+
+// Student home view response (impl-guide.md §5.8)
+export const studentHomeViewSchema = z.object({
+  cards: z.array(studentHomeCardSchema),
+  bound: z.boolean(),
 })
 
 export const packageViewSchema = z.object({
@@ -310,30 +323,42 @@ export const invitePreviewSchema = z.object({
 
 export const bookableDayViewSchema = z.object({
   date: z.string(),
+  dateLabel: z.string(),
+  weekday: z.number().int().min(1).max(7),
+  weekdayLabel: z.string(),
   slotCount: z.number().int().nonnegative(),
 })
 
 export const bookableDaysResponseSchema = z.object({
   timezone: z.string(),
   generatedAt: z.string().datetime(),
+  reason: slotReasonSchema.nullable(),
+  reasonText: z.string().nullable(),
   days: z.array(bookableDayViewSchema),
+  balance: balanceViewSchema,
 })
 
 export const slotsResponseSchema = z.object({
   date: z.string(),
+  dateLabel: z.string(),
   timezone: z.string(),
   generatedAt: z.string().datetime(),
   reason: slotReasonSchema.nullable(),
+  reasonText: z.string().nullable(),
   slots: z.array(slotViewSchema),
+  balance: balanceViewSchema,
 })
 
 export const teacherDayViewSchema = z.object({
   date: z.string(),
+  isToday: z.boolean(),
   dateLabel: z.string(),
-  todayBookings: z.array(bookingViewSchema),
-  pendingBookings: z.array(bookingViewSchema),
-  nextBooking: bookingViewSchema.nullable(),
-  bookingCount: z.number().int().nonnegative(),
+  todayCount: z.number().int().nonnegative(),
+  completedCount: z.number().int().nonnegative(),
+  next: bookingViewSchema.nullable(),
+  bookings: z.array(bookingViewSchema),
+  pending: z.array(bookingViewSchema),
+  hints: z.array(z.string()),
 })
 
 // ============================================================================
@@ -380,8 +405,9 @@ export const createPackageRequestSchema = z.object({
 })
 
 export const addPackageTransactionRequestSchema = z.object({
-  type: packageTransactionTypeSchema,
-  amount: z.number().int(),
+  mode: z.enum(['add', 'deduct', 'set']),
+  sessions: z.number().int().positive(),
+  type: packageTransactionTypeSchema.optional(), // required when mode='set'
   note: z.string().optional(),
 })
 
@@ -404,7 +430,8 @@ export const createAvailabilityRuleRequestSchema = z.object({
 })
 
 export const createAvailabilityExceptionRequestSchema = z.object({
-  date: z.string(),
+  onDate: z.string(), // YYYY-MM-DD
+  wholeDay: z.boolean().optional(),
   startMinute: z.number().int().min(0).max(1439).optional(),
   endMinute: z.number().int().min(0).max(1439).optional(),
   reason: z.string().optional(),
@@ -425,13 +452,13 @@ export const updateStudentRequestSchema = z.object({
 
 export const createTeacherRequestSchema = z.object({
   name: z.string().min(1).max(100),
-  avatar: z.string().url().optional(),
+  avatarUrl: z.string().url().optional(),
   bio: z.string().max(500).optional(),
 })
 
 export const updateTeacherRequestSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  avatar: z.string().url().optional(),
+  avatarUrl: z.string().url().optional(),
   bio: z.string().max(500).optional(),
   slotStepMinutes: z.number().int().positive().optional(),
   minLeadHours: z.number().int().nonnegative().optional(),
@@ -453,8 +480,39 @@ export const registerDeviceResponseSchema = z.object({
   registered: z.boolean(),
 })
 
+// ============================================================================
+// Auth Response Schemas (impl-guide.md §5.1)
+// ============================================================================
+
+export const studentSummarySchema = z.object({
+  teacherId: z.string().uuid(),
+  teacherName: z.string(),
+  teacherAvatarUrl: z.string().nullable(),
+  studentId: z.string().uuid(),
+  studentName: z.string(),
+})
+
+export const authResponseSchema = z.object({
+  userId: z.string().uuid(),
+  isTeacher: z.boolean(),
+  teacher: teacherProfileSchema.nullable(),
+  students: z.array(studentSummarySchema),
+})
+
+export const meResponseSchema = z.object({
+  user: z.object({
+    userId: z.string().uuid(),
+    nickname: z.string().nullable(),
+    avatarUrl: z.string().nullable(),
+  }),
+  isTeacher: z.boolean(),
+  teacher: teacherProfileSchema.nullable(),
+  students: z.array(studentSummarySchema),
+})
+
 export const metaResponseSchema = z.object({
-  version: z.string(),
-  minSupportedVersion: z.string(),
+  minIOSVersion: z.string(),
+  minWebBuild: z.string(),
+  features: z.record(z.boolean()),
   serverTime: z.string().datetime(),
 })
