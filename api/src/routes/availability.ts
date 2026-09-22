@@ -55,14 +55,22 @@ export function createAvailabilityRouter(deps: {
   /**
    * PATCH /v1/availability/rules/:ruleId
    * 
-   * Update availability rule (teacher only - repository enforces ownership)
+   * Update availability rule (teacher only)
    */
   router.patch('/rules/:ruleId', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const { ruleId } = req.params
     const principal = req.principal
 
-    // Verify teacher capability (repository checks rule ownership)
-    await getTeacherIdFromPrincipal(principal, deps.teacherRepo)
+    // Get teacher capability
+    const teacherId = await getTeacherIdFromPrincipal(principal, deps.teacherRepo)
+
+    // Load teacher's rules to verify ownership
+    const rules = await deps.availabilityRepo.listRules(teacherId)
+    const ownsRule = rules.some(r => r.ruleId === ruleId)
+    
+    if (!ownsRule) {
+      throw new AppError(ErrorCode.FORBIDDEN, 'Rule not found or not owned by teacher')
+    }
 
     const rule = await deps.availabilityRepo.updateRule(ruleId, req.body)
     res.json(createSuccessEnvelope({ rule }, req.requestId))
@@ -71,14 +79,22 @@ export function createAvailabilityRouter(deps: {
   /**
    * DELETE /v1/availability/rules/:ruleId
    * 
-   * Delete availability rule (teacher only - repository enforces ownership)
+   * Delete availability rule (teacher only)
    */
   router.delete('/rules/:ruleId', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const { ruleId } = req.params
     const principal = req.principal
 
-    // Verify teacher capability (repository checks rule ownership)
-    await getTeacherIdFromPrincipal(principal, deps.teacherRepo)
+    // Get teacher capability
+    const teacherId = await getTeacherIdFromPrincipal(principal, deps.teacherRepo)
+
+    // Load teacher's rules to verify ownership
+    const rules = await deps.availabilityRepo.listRules(teacherId)
+    const ownsRule = rules.some(r => r.ruleId === ruleId)
+    
+    if (!ownsRule) {
+      throw new AppError(ErrorCode.FORBIDDEN, 'Rule not found or not owned by teacher')
+    }
 
     await deps.availabilityRepo.deleteRule(ruleId)
     res.json(createSuccessEnvelope({ deleted: true }, req.requestId))
@@ -125,14 +141,24 @@ export function createAvailabilityRouter(deps: {
   /**
    * DELETE /v1/availability/exceptions/:exceptionId
    * 
-   * Delete availability exception (teacher only - repository enforces ownership)
+   * Delete availability exception (teacher only)
    */
   router.delete('/exceptions/:exceptionId', authMiddleware, requireUser, asyncHandler(async (req, res) => {
     const { exceptionId } = req.params
     const principal = req.principal
 
-    // Verify teacher capability (repository checks exception ownership)
-    await getTeacherIdFromPrincipal(principal, deps.teacherRepo)
+    // Get teacher capability
+    const teacherId = await getTeacherIdFromPrincipal(principal, deps.teacherRepo)
+
+    // Load teacher's exceptions to verify ownership (wide date range to catch all)
+    const fromDate = new Date('2020-01-01').toISOString().split('T')[0]
+    const toDate = new Date('2030-12-31').toISOString().split('T')[0]
+    const exceptions = await deps.availabilityRepo.listExceptions(teacherId, fromDate, toDate)
+    const ownsException = exceptions.some(e => e.exceptionId === exceptionId)
+    
+    if (!ownsException) {
+      throw new AppError(ErrorCode.FORBIDDEN, 'Exception not found or not owned by teacher')
+    }
 
     await deps.availabilityRepo.deleteException(exceptionId)
     res.json(createSuccessEnvelope({ deleted: true }, req.requestId))

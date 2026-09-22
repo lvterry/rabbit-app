@@ -30,6 +30,35 @@ describe('Real HTTP - Invite Flows', () => {
     } as any
 
     const mockStudentRepo = {
+      listByTeacher: async (teacherId: string) => {
+        if (teacherId === 'teacher-1') {
+          return [
+            {
+              student: {
+                studentId: 'student-1',
+                teacherId: 'teacher-1',
+                name: '小明',
+                contact: null,
+                status: 'active',
+                createdAt: '2024-01-01',
+              },
+              invite: {
+                inviteId: 'invite-1',
+                teacherId: 'teacher-1',
+                studentName: '小明',
+                token: 'pending-token',
+                status: 'Pending',
+                createdAt: '2024-01-01T00:00:00Z',
+                expiresAt: '2026-12-31T00:00:00Z',
+                consumedAt: null,
+                consumedByUserId: null,
+              },
+              package: null,
+            },
+          ]
+        }
+        return []
+      },
       getInviteByToken: async (token: string) => {
         if (token === 'pending-token') {
           return {

@@ -230,10 +230,22 @@ export function createInviteRouter(deps: {
     const { inviteId } = req.params
     const principal = req.principal
 
-    // Assert user has teacher capability (repository enforces ownership)
+    // Get teacher capability
     const teacherId = await getTeacherIdFromPrincipal(principal, deps.teacherRepo)
 
-    // Revoke the invite via repository (repository checks ownership)
+    // Load teacher's students to verify invite ownership
+    const students = await deps.studentRepo.listByTeacher(teacherId)
+    
+    // Find student with matching invite
+    const studentWithInvite = students.find(s => 
+      s.invite?.inviteId === inviteId
+    )
+    
+    if (!studentWithInvite) {
+      throw new AppError(ErrorCode.FORBIDDEN, 'Invite not found or not owned by teacher')
+    }
+
+    // Revoke the invite
     await deps.studentRepo.revokeInvite(inviteId)
 
     res.json(
