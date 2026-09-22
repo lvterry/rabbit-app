@@ -309,13 +309,22 @@ export class BookingRepositoryImpl implements BookingRepository {
     try {
       await client.query('BEGIN')
 
+      // Resolve endpoint and hash upfront (use middleware values, fail closed if missing in HTTP paths)
+      const finalEndpoint = endpoint || 'POST /v1/bookings'
+      const finalRequestHash = requestHash || (() => {
+        const crypto = require('crypto')
+        return crypto.createHash('sha256')
+          .update(JSON.stringify({ courseId: data.courseId, startAt: data.startAt, studentId: data.studentId }))
+          .digest('hex')
+      })()
+
       // Step 1: Check idempotency (docs/data-model.md §2.8)
       const { rows: existingIdem } = await client.query(
         `SELECT response_body FROM idempotency_record
          WHERE (user_id = $1 OR student_id = $2) 
            AND idempotency_key = $3
-           AND endpoint = 'create_booking'`,
-        [principal.userId, principal.studentId, idempotencyKey]
+           AND endpoint = $4`,
+        [principal.userId, principal.studentId, idempotencyKey, finalEndpoint]
       )
 
       if (existingIdem.length > 0) {
@@ -525,15 +534,7 @@ export class BookingRepositoryImpl implements BookingRepository {
         ]
       )
 
-      // Step 9: Record idempotency (P0 #5: with SHA-256 hash from middleware)
-      const finalEndpoint = endpoint || 'POST /v1/bookings'
-      const finalRequestHash = requestHash || (() => {
-        const crypto = require('crypto')
-        return crypto.createHash('sha256')
-          .update(JSON.stringify({ courseId: data.courseId, startAt: data.startAt, studentId: data.studentId }))
-          .digest('hex')
-      })()
-      
+      // Step 9: Record idempotency (P0 #5: use already-resolved endpoint + hash)
       // Use INSERT ... ON CONFLICT DO NOTHING for idempotency
       // The unique indexes handle the conflict detection
       try {
