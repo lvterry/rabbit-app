@@ -45,7 +45,7 @@ export interface RouteDependencies {
 export function createApiRouter(deps: RouteDependencies): Router {
   const router = Router()
 
-  // Mount route modules (Phase 0-2)
+  // Mount route modules per §12 Phase 0-2 freeze
   
   // Auth routes (login, refresh) - under /auth
   router.use('/auth', createAuthRouter(deps))
@@ -53,7 +53,7 @@ export function createApiRouter(deps: RouteDependencies): Router {
   // Session metadata routes - at root level (NOT under /auth)
   router.use('/', createSessionRouter(deps))
   
-  // Business routes
+  // Business routes - mounted to match §12 exact paths
   router.use('/invites', createInviteRouter(deps))
   router.use('/bookings', createBookingRouter(deps))
   router.use('/teachers', createSlotsRouter(deps))
@@ -61,7 +61,10 @@ export function createApiRouter(deps: RouteDependencies): Router {
   router.use('/students', createStudentRouter(deps))
   router.use('/courses', createCourseRouter(deps))
   router.use('/availability', createAvailabilityRouter(deps))
-  router.use('/students', createPackageRouter(deps))
+  
+  // Package routes: mount at root to handle both /students/* and /packages/* paths
+  router.use('/', createPackageRouter(deps))
+  
   router.use('/me/devices', createDeviceRouter(deps.pool))
 
   return router

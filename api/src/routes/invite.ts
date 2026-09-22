@@ -13,7 +13,7 @@ import { Router } from 'express'
 import type { StudentRepository, TeacherRepository, CourseRepository } from '../ports'
 import { createSuccessEnvelope, AppError } from '../http'
 import { ErrorCode } from '@rabbit/shared'
-import { authMiddleware } from '../middleware'
+import { authMiddleware, requireAuth } from '../middleware'
 import {
   generateStudentAccessToken,
   generateStudentRefreshToken,
@@ -211,6 +211,40 @@ export function createInviteRouter(deps: {
           redirectTo: '/',
           accessToken, // Short-lived token for immediate use (iOS/Web)
           // refreshToken: EXCLUDED - HttpOnly cookie only (Web long credential)
+        },
+        req.requestId
+      )
+    )
+  })
+
+  /**
+   * POST /v1/invites/:inviteId/revoke
+   * 
+   * Revoke an invite (teacher only)
+   * §12.5 Phase 0-2
+   */
+  router.post('/:inviteId/revoke', authMiddleware, requireAuth, async (req, res) => {
+    const { inviteId } = req.params
+    const principal = req.principal
+
+    // Only teachers can revoke invites
+    if (principal.kind !== 'User' || !principal.userId) {
+      throw new AppError(ErrorCode.FORBIDDEN, 'Only teachers can revoke invites')
+    }
+
+    const teacher = await deps.teacherRepo.findByUserId(principal.userId)
+    if (!teacher) {
+      throw new AppError(ErrorCode.FORBIDDEN, 'User does not have teacher capability')
+    }
+
+    // Revoke the invite via repository
+    await deps.studentRepo.revokeInvite(inviteId)
+
+    res.json(
+      createSuccessEnvelope(
+        {
+          inviteId,
+          revoked: true,
         },
         req.requestId
       )

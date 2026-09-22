@@ -5,19 +5,33 @@
  */
 
 import { Router } from 'express'
-import type { PackageRepository } from '../ports'
-import { createSuccessEnvelope } from '../http'
-import { authMiddleware, requireUser } from '../middleware'
+import type { PackageRepository, TeacherRepository } from '../ports'
+import { createSuccessEnvelope, AppError } from '../http'
+import { ErrorCode } from '@rabbit/shared'
+import { authMiddleware, requireAuth } from '../middleware'
 
-export function createPackageRouter(deps: { packageRepo: PackageRepository }): Router {
+export function createPackageRouter(deps: { 
+  packageRepo: PackageRepository
+  teacherRepo: TeacherRepository
+}): Router {
   const router = Router()
 
-  router.post('/students/:studentId/packages', authMiddleware, requireUser, async (req, res) => {
+  // §12.6: POST /v1/students/:studentId/packages
+  router.post('/students/:studentId/packages', authMiddleware, requireAuth, async (req, res) => {
     const { courseId, sessions, note } = req.body
+    const principal = req.principal
     
-    // Get teacher ID from current user
-    const teacher = await deps.packageRepo.findById('') // TODO: need teacherRepo
-    const teacherId = 'placeholder-teacher-id' // TODO: derive from principal
+    // Derive teacherId from principal (fail closed)
+    if (principal.kind !== 'User' || !principal.userId) {
+      throw new AppError(ErrorCode.FORBIDDEN, 'Only teachers can create packages')
+    }
+
+    const teacher = await deps.teacherRepo.findByUserId(principal.userId)
+    if (!teacher) {
+      throw new AppError(ErrorCode.FORBIDDEN, 'User does not have teacher capability')
+    }
+
+    const teacherId = teacher.teacherId
     
     const pkg = await deps.packageRepo.create(
       req.params.studentId,
@@ -28,7 +42,8 @@ export function createPackageRouter(deps: { packageRepo: PackageRepository }): R
     res.json(createSuccessEnvelope({ package: pkg, balance }, req.requestId))
   })
 
-  router.post('/packages/:packageId/transactions', authMiddleware, requireUser, async (req, res) => {
+  // §12.6: POST /v1/packages/:packageId/transactions
+  router.post('/packages/:packageId/transactions', authMiddleware, requireAuth, async (req, res) => {
     const { mode, sessions, type, note } = req.body
     await deps.packageRepo.addTransaction(
       req.params.packageId,
@@ -39,7 +54,8 @@ export function createPackageRouter(deps: { packageRepo: PackageRepository }): R
     res.json(createSuccessEnvelope({ package: pkg }, req.requestId))
   })
 
-  router.post('/packages/:packageId/archival', authMiddleware, requireUser, async (req, res) => {
+  // §12.6: POST /v1/packages/:packageId/archival
+  router.post('/packages/:packageId/archival', authMiddleware, requireAuth, async (req, res) => {
     const { archived } = req.body
     const pkg = archived
       ? await deps.packageRepo.archive(req.params.packageId)
@@ -47,8 +63,39 @@ export function createPackageRouter(deps: { packageRepo: PackageRepository }): R
     res.json(createSuccessEnvelope({ package: pkg }, req.requestId))
   })
 
-  router.get('/students/:studentId/transactions', authMiddleware, requireUser, async (req, res) => {
+  // §12.6: GET /v1/students/:studentId/transactions
+  router.get('/students/:studentId/transactions', authMiddleware, requireAuth, async (req, res) => {
     const transactions = await deps.packageRepo.listTransactionsByStudent(req.params.studentId)
+    res.json(createSuccessEnvelope({ items: transactions, hasMore: false }, req.requestId))
+  })
+
+  // §12.6: GET /v1/me/transactions
+  router.get('/me/transactions', authMiddleware, requireAuth, async (req, res) => {
+    const principal = req.principal
+
+    // Teacher path: User with teacher capability
+    if (principal.kind === 'User' && principal.userId) {
+      const teacher = await deps.teacherRepo.findByUserId(principal.userId)
+      if (teacher) {
+        // TODO: Get all transactions for this teacher's students
+        res.json(createSuccessEnvelope({ items: [], hasMore: false }, req.requestId))
+        return
+      }
+    }
+
+    // Student path: Student session or User with student binding
+    let studentId: string | null = null
+    if (principal.kind === 'Student') {
+      studentId = principal.studentId
+    } else if (principal.kind === 'User' && principal.userId) {
+      // TODO: Get first student binding
+    }
+
+    if (!studentId) {
+      throw new AppError(ErrorCode.FORBIDDEN, 'No student binding found')
+    }
+
+    const transactions = await deps.packageRepo.listTransactionsByStudent(studentId)
     res.json(createSuccessEnvelope({ items: transactions, hasMore: false }, req.requestId))
   })
 

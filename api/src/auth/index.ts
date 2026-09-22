@@ -4,3 +4,4 @@
 
 export * from './principal'
 export * from './jwt'
+export * from './authorization'
