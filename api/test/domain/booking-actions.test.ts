@@ -109,7 +109,8 @@ describe('computeBookingActions', () => {
       }
 
       // maxReschedules = 2, rescheduleCount = 2, so at limit
-      const actions = computeBookingActions(maxRescheduledBooking, 'Student', 48, 2, now)
+      // Parameters: (booking, capability, maxReschedules, undoCompleteDays, now)
+      const actions = computeBookingActions(maxRescheduledBooking, 'Student', 2, 7, now)
       expect(actions.canReschedule).toBe(false)
       expect(actions.rescheduleLimitReached).toBe(true)
     })

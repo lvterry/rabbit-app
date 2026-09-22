@@ -69,7 +69,7 @@ export function createPackageRouter(deps: {
       throw new AppError(ErrorCode.VALIDATION_FAILED, 'Package not found')
     }
     
-    if (rows[0].teacher_id !== teacher.id) {
+    if (rows[0].teacher_id !== teacher.teacherId) {
       throw new AppError(ErrorCode.FORBIDDEN, 'You do not have permission to modify this package')
     }
     
@@ -107,7 +107,7 @@ export function createPackageRouter(deps: {
       throw new AppError(ErrorCode.VALIDATION_FAILED, 'Package not found')
     }
     
-    if (rows[0].teacher_id !== teacher.id) {
+    if (rows[0].teacher_id !== teacher.teacherId) {
       throw new AppError(ErrorCode.FORBIDDEN, 'You do not have permission to archive this package')
     }
     
@@ -142,7 +142,7 @@ export function createPackageRouter(deps: {
       throw new AppError(ErrorCode.VALIDATION_FAILED, 'Student not found')
     }
     
-    if (rows[0].teacher_id !== teacher.id) {
+    if (rows[0].teacher_id !== teacher.teacherId) {
       throw new AppError(ErrorCode.FORBIDDEN, 'You do not have permission to view this student\'s transactions')
     }
     

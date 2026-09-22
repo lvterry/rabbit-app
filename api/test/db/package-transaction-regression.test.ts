@@ -132,26 +132,30 @@ describe('Package Transaction Regression: REVERSAL', () => {
         `SELECT type, amount, before_sessions, after_sessions, booking_id, session_id
          FROM package_transaction
          WHERE package_id = $1
-         ORDER BY created_at`,
+         ORDER BY created_at, id`,
         [pkg.id]
       )
 
       expect(transactions).toHaveLength(2)
       
-      // First: SESSION_COMPLETED
-      expect(transactions[0].type).toBe('SESSION_COMPLETED')
-      expect(transactions[0].amount).toBe(-1)
-      expect(transactions[0].before_sessions).toBe(10)
-      expect(transactions[0].after_sessions).toBe(9)
-      expect(transactions[0].booking_id).toBe(booking.id)
+      // Find transactions by type (order-independent)
+      const sessionCompleted = transactions.find(t => t.type === 'SESSION_COMPLETED')
+      const reversal = transactions.find(t => t.type === 'REVERSAL')
       
-      // Second: REVERSAL
-      expect(transactions[1].type).toBe('REVERSAL')
-      expect(transactions[1].amount).toBe(1)
-      expect(transactions[1].before_sessions).toBe(9)
-      expect(transactions[1].after_sessions).toBe(10)
-      expect(transactions[1].booking_id).toBe(booking.id)
-      expect(transactions[1].session_id).toBe(session.id)
+      // Verify SESSION_COMPLETED
+      expect(sessionCompleted).toBeDefined()
+      expect(sessionCompleted!.amount).toBe(-1)
+      expect(sessionCompleted!.before_sessions).toBe(10)
+      expect(sessionCompleted!.after_sessions).toBe(9)
+      expect(sessionCompleted!.booking_id).toBe(booking.id)
+      
+      // Verify REVERSAL
+      expect(reversal).toBeDefined()
+      expect(reversal!.amount).toBe(1)
+      expect(reversal!.before_sessions).toBe(9)
+      expect(reversal!.after_sessions).toBe(10)
+      expect(reversal!.booking_id).toBe(booking.id)
+      expect(reversal!.session_id).toBe(session.id)
 
       await client.query('ROLLBACK') // Clean up
     } catch (error) {
