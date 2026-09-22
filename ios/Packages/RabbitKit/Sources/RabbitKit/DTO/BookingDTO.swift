@@ -86,9 +86,7 @@ public struct BookingActions: Codable {
 
 // MARK: - Teacher Day View
 
-/// Teacher's daily view (T01 Today page)
-/// Decodes both the full shared TeacherDayView shape and the slim
-/// `{ date, bookings }` envelope currently returned by GET /v1/me/teacher-day.
+/// Teacher's daily view (T01 Today page) — full shared TeacherDayView (PR #20).
 public struct TeacherDayView: Codable {
     public let date: String
     public let isToday: Bool
@@ -100,22 +98,26 @@ public struct TeacherDayView: Codable {
     public let pending: [Booking]
     public let hints: [String]
 
-    enum CodingKeys: String, CodingKey {
-        case date, isToday, dateLabel, todayCount, completedCount, next, bookings, pending, hints
-    }
-
-    public init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        date = try c.decode(String.self, forKey: .date)
-        bookings = try c.decodeIfPresent([Booking].self, forKey: .bookings) ?? []
-        isToday = try c.decodeIfPresent(Bool.self, forKey: .isToday) ?? true
-        dateLabel = try c.decodeIfPresent(String.self, forKey: .dateLabel) ?? date
-        todayCount = try c.decodeIfPresent(Int.self, forKey: .todayCount) ?? bookings.count
-        completedCount = try c.decodeIfPresent(Int.self, forKey: .completedCount)
-            ?? bookings.filter { $0.status == .Completed }.count
-        next = try c.decodeIfPresent(Booking.self, forKey: .next)
-        pending = try c.decodeIfPresent([Booking].self, forKey: .pending) ?? []
-        hints = try c.decodeIfPresent([String].self, forKey: .hints) ?? []
+    public init(
+        date: String,
+        isToday: Bool,
+        dateLabel: String,
+        todayCount: Int,
+        completedCount: Int,
+        next: Booking?,
+        bookings: [Booking],
+        pending: [Booking],
+        hints: [String]
+    ) {
+        self.date = date
+        self.isToday = isToday
+        self.dateLabel = dateLabel
+        self.todayCount = todayCount
+        self.completedCount = completedCount
+        self.next = next
+        self.bookings = bookings
+        self.pending = pending
+        self.hints = hints
     }
 }
 
