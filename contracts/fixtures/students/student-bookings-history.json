@@ -1,0 +1,78 @@
+{
+  "ok": true,
+  "data": {
+    "history": [
+      {
+        "bookingId": "850e8400-e29b-41d4-a716-446655440002",
+        "teacherId": "550e8400-e29b-41d4-a716-446655440001",
+        "teacherName": "王老师",
+        "studentId": "650e8400-e29b-41d4-a716-446655440001",
+        "studentName": "李同学",
+        "courseId": "750e8400-e29b-41d4-a716-446655440001",
+        "courseName": "西班牙语一对一",
+        "durationMinutes": 60,
+        "startAt": 1739184000000,
+        "endAt": 1739187600000,
+        "date": "2026-02-10",
+        "dateLabel": "2月10日 周二",
+        "startLocal": "14:00",
+        "endLocal": "15:00",
+        "timeRange": "14:00 - 15:00",
+        "status": "Completed",
+        "source": "SelfBooked",
+        "sourceLabel": "学员自主预约",
+        "sessionStatus": "Completed",
+        "sessionSource": "Automatic",
+        "sessionSourceLabel": "系统自动结算",
+        "actions": {
+          "canCancel": false,
+          "canReschedule": false,
+          "canComplete": false,
+          "canMarkNoShow": false,
+          "canUndoComplete": false,
+          "rescheduleLimitReached": false,
+          "undoDeadline": null
+        }
+      },
+      {
+        "bookingId": "850e8400-e29b-41d4-a716-446655440003",
+        "teacherId": "550e8400-e29b-41d4-a716-446655440001",
+        "teacherName": "王老师",
+        "studentId": "650e8400-e29b-41d4-a716-446655440001",
+        "studentName": "李同学",
+        "courseId": "750e8400-e29b-41d4-a716-446655440001",
+        "courseName": "西班牙语一对一",
+        "durationMinutes": 60,
+        "startAt": 1738665600000,
+        "endAt": 1738669200000,
+        "date": "2026-02-04",
+        "dateLabel": "2月4日 周三",
+        "startLocal": "10:00",
+        "endLocal": "11:00",
+        "timeRange": "10:00 - 11:00",
+        "status": "Cancelled",
+        "cancelledAt": 1738579200000,
+        "cancelledBy": "Student",
+        "cancelledByLabel": "学员取消",
+        "cancellationPolicyResult": "Free",
+        "policyText": "免费取消",
+        "consumedSession": false,
+        "source": "TeacherCreated",
+        "sourceLabel": "老师代约",
+        "actions": {
+          "canCancel": false,
+          "canReschedule": false,
+          "canComplete": false,
+          "canMarkNoShow": false,
+          "canUndoComplete": false,
+          "rescheduleLimitReached": false,
+          "undoDeadline": null
+        }
+      }
+    ]
+  },
+  "meta": {
+    "generatedAt": "2026-02-20T02:11:00Z",
+    "requestId": "req_student_bookings_history"
+  }
+}
