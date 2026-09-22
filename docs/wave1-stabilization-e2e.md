@@ -1,8 +1,8 @@
 # Wave 1 Stabilization E2E Exit Gate
 
-**Status:** Draft checklist  
+**Status:** Active checklist  
 **Owner:** Architect (docs/checklist); see ownership table below  
-**Context:** Pilot-readiness gate after Wave 1 Stabilization P0 merges (issues #12 freeze, #13 Leo, #14 Nina, #15 Maya). Wave 2 feature work remains HOLD until this gate passes on local stack.
+**Context:** Pilot-readiness gate after Wave 1 Stabilization P0 merges (PRs #12 freeze, #13 Leo, #14 Nina, #15 Maya). Wave 2 feature work remains HOLD until this gate passes on local stack.
 
 ---
 
@@ -63,11 +63,12 @@ Beyond UI clicks, the following non-UI checks must hold on the real Postgres pat
 - Verify exactly **one** `PACKAGE_CREATED` ledger row exists with `+N` sessions.
 
 ### Self-Book / Free Reschedule: Reserve Only
-- Self-book and free reschedule (within `freeCancelHours`) create a `BOOKING_CREATED` transaction but do NOT immediately decrement `remaining_sessions`.
+- Self-book and free reschedule (within `freeCancelHours`) are **reserve-only operations**: they insert or update the `booking` row and select a FIFO `package_id`, but do **not** call `apply_package_transaction` and do **not** write any ledger entry.
+- `remaining_sessions` is unchanged by create or free reschedule.
 - Balance changes occur only on completion or late cancel/reschedule.
 
 ### Late Cancel/Reschedule vs Free Cancel
-- **Late cancel/reschedule** (beyond `freeCancelHours` from `start_at`): Write a `LATE_CANCEL` or `BOOKING_CANCELLED` ledger entry; balance decrements.
+- **Late cancel/reschedule** (beyond `freeCancelHours` from `start_at`): Write a `LATE_CANCEL` ledger entry (per `docs/data-model.md` transaction types); balance decrements. (Note: the freeze doc may use shorthand `BOOKING_CANCELLED`; implementations must follow the authoritative data-model names.)
 - **Free cancel** (within `freeCancelHours`): No ledger entry; `remaining_sessions` unchanged.
 
 ### Complete: SESSION_COMPLETED −1
@@ -126,6 +127,18 @@ Before running the E2E gate locally, ensure the following setup:
   - One package with credit balance (e.g., 10 sessions)
 - **Action for Maya:** If a seed script does not currently exist in the repo, provide a minimal one or document the manual SQL/API sequence needed to seed the above data.  
   _Do NOT invent a seed implementation in this documentation PR._ This is a follow-up task for Maya if needed.
+
+### Local Teacher Auth (iOS E2E Only)
+- Product Sign in with Apple (`POST /v1/auth/apple`) remains **501 Not Implemented** and is **not required** for this Stabilization gate.
+- For teacher iOS E2E testing on local stack only, allow `POST /v1/auth/dev/teacher` endpoint:
+  - **Gate:** `NODE_ENV=development` or `test` only; return `404` or `403` in production/staging.
+  - **Behavior:** Seeds or looks up a teacher `User` record and returns **real** access + refresh JWTs (same shape as production auth envelopes).
+  - iOS uses real `Principal` + real `/v1/*` routes — **not** `DEMO_MODE`, **not** mock repositories, **not** bypassing `SessionStore`.
+  - Teacher can then create students, invites, bookings, etc., using the standard iOS UI flows.
+- **Ownership:**
+  - **Maya:** Implements `POST /v1/auth/dev/teacher` in API (gated to dev/test environments).
+  - **Nina:** Adds a DEBUG-only UI entry (compile flag, never enabled for Release builds) that calls this endpoint to obtain tokens, then proceeds through normal iOS auth flow.
+- **Note:** Mac simulator is still required for Nina's manual walkthrough + screenshots. Do not implement this endpoint in this documentation PR.
 
 ---
 
