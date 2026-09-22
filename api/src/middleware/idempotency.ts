@@ -85,7 +85,11 @@ export function createIdempotencyMiddleware(idempotencyRepo: IdempotencyReposito
       // Found existing record - check if replay or reuse
       if (existing.requestHash === requestHash) {
         // Replay: same request -> return cached response
-        res.status(existing.responseStatus).json(JSON.parse(existing.responseBody))
+        // response_body is JSONB: node-pg returns it already parsed
+        const parsedBody = typeof existing.responseBody === 'string' 
+          ? JSON.parse(existing.responseBody) 
+          : existing.responseBody
+        res.status(existing.responseStatus).json(parsedBody)
         return
       }
 
@@ -114,7 +118,11 @@ export function createIdempotencyMiddleware(idempotencyRepo: IdempotencyReposito
           // Compare hash and endpoint
           if (winner.requestHash === requestHash && winner.responseStatus) {
             // Same request won the race -> replay their response
-            res.status(winner.responseStatus).json(JSON.parse(winner.responseBody))
+            // response_body is JSONB: node-pg returns it already parsed
+            const parsedBody = typeof winner.responseBody === 'string'
+              ? JSON.parse(winner.responseBody)
+              : winner.responseBody
+            res.status(winner.responseStatus).json(parsedBody)
             return
           }
 
