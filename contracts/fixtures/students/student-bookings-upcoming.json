@@ -1,0 +1,40 @@
+{
+  "ok": true,
+  "data": {
+    "upcoming": [
+      {
+        "bookingId": "850e8400-e29b-41d4-a716-446655440001",
+        "teacherId": "550e8400-e29b-41d4-a716-446655440001",
+        "teacherName": "王老师",
+        "studentId": "650e8400-e29b-41d4-a716-446655440001",
+        "studentName": "李同学",
+        "courseId": "750e8400-e29b-41d4-a716-446655440001",
+        "courseName": "西班牙语一对一",
+        "durationMinutes": 60,
+        "startAt": 1740398400000,
+        "endAt": 1740402000000,
+        "date": "2026-03-03",
+        "dateLabel": "3月3日 周二",
+        "startLocal": "14:00",
+        "endLocal": "15:00",
+        "timeRange": "14:00 - 15:00",
+        "status": "Upcoming",
+        "source": "SelfBooked",
+        "sourceLabel": "学员自主预约",
+        "actions": {
+          "canCancel": true,
+          "canReschedule": true,
+          "canComplete": false,
+          "canMarkNoShow": false,
+          "canUndoComplete": false,
+          "rescheduleLimitReached": false,
+          "undoDeadline": null
+        }
+      }
+    ]
+  },
+  "meta": {
+    "generatedAt": "2026-02-20T02:11:00Z",
+    "requestId": "req_student_bookings_upcoming"
+  }
+}

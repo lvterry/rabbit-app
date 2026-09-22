@@ -34,6 +34,100 @@ jobs:
       - name: Contract tests
         run: pnpm test:contract
 
+  domain-gate:
+    name: Domain Gate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Domain tests
+        run: pnpm --filter api test:domain
+
+  api-gate:
+    name: API Gate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: API integration tests
+        run: pnpm --filter api test:api
+
+  db-gate:
+    name: DB Gate
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rabbit
+          POSTGRES_PASSWORD: rabbit_test_password
+          POSTGRES_DB: rabbit_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://rabbit:rabbit_test_password@localhost:5432/rabbit_test
+        run: pnpm db:migrate
+      
+      - name: DB tests
+        env:
+          DATABASE_URL: postgresql://rabbit:rabbit_test_password@localhost:5432/rabbit_test
+        run: pnpm --filter api test:db
+
   ios-build-gate:
     name: iOS Build Gate
     runs-on: macos-latest

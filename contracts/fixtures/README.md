@@ -25,7 +25,9 @@ contracts/fixtures/
 ├── students/
 │   ├── student-home-anonymous.json           # Anonymous student home (no account)
 │   ├── student-home-user-multi-teacher.json  # Student with account, multiple teachers
-│   └── student-detail.json                   # Teacher view of student detail
+│   ├── student-detail.json                   # Teacher view of student detail
+│   ├── student-bookings-upcoming.json        # Student upcoming bookings (scope=upcoming)
+│   └── student-bookings-history.json         # Student booking history (scope=history)
 ├── slots/
 │   ├── bookable-days.json                    # Days with available slots
 │   ├── slots.json                            # Available time slots for a day
@@ -94,7 +96,9 @@ import upcomingTeacherFixture from '../../../contracts/fixtures/bookings/upcomin
 3. `slots/bookable-days.json` → Student views available days
 4. `slots/slots.json` → Student views time slots
 5. `bookings/upcoming-student.json` → Student creates booking
-6. `bookings/completed.json` → Booking is completed
+6. `students/student-bookings-upcoming.json` → Student views upcoming bookings
+7. `students/student-bookings-history.json` → Student views booking history
+8. `bookings/completed.json` → Booking is completed
 
 ### Error Scenarios
 
