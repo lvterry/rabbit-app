@@ -142,10 +142,10 @@ async function seedTestData() {
 
   // 6. Create invite token for student
   const inviteResult = await pool.query(
-    `INSERT INTO student_invite (student_id, token, status, expires_at)
-     VALUES ($1, $2, 'Pending', now() + interval '7 days')
+    `INSERT INTO student_invite (teacher_id, student_id, token, status, expires_at)
+     VALUES ($1, $2, $3, 'Pending', now() + interval '7 days')
      RETURNING token`,
-    [studentId, `e2e-invite-${Date.now()}`]
+    [teacherId, studentId, `e2e-invite-${Date.now()}`]
   )
   inviteToken = inviteResult.rows[0].token
 

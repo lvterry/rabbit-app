@@ -120,9 +120,9 @@ async function seed(): Promise<SeedOutput> {
     // 6. Create invite token
     const inviteToken = `e2e-invite-${Date.now()}-${Math.random().toString(36).substring(7)}`
     await pool.query(
-      `INSERT INTO student_invite (student_id, token, status, expires_at)
-       VALUES ($1, $2, 'Pending', now() + interval '7 days')`,
-      [studentId, inviteToken]
+      `INSERT INTO student_invite (teacher_id, student_id, token, status, expires_at)
+       VALUES ($1, $2, $3, 'Pending', now() + interval '7 days')`,
+      [teacherId, studentId, inviteToken]
     )
 
     // 7. Calculate bookable slot (48h from now, passes minLeadHours=2)
