@@ -28,6 +28,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import pg from 'pg'
 import supertest from 'supertest'
+import { randomUUID } from 'crypto'
 import { createRealApp } from '../helpers/realApp'
 
 const { Pool } = pg
@@ -44,6 +45,7 @@ let packageId: string
 let inviteToken: string
 let studentAccessToken: string
 let teacherAccessToken: string
+let completeIdempotencyKey: string // For test 8 & 9 idempotency replay
 
 // Availability slot times (relative to "now" for self-bookable slots)
 const slotStartOffsetHours = 48 // 2 days from now (beyond minLeadHours)
@@ -241,7 +243,7 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
     const booking1Res = await request
       .post('/v1/bookings')
       .set('Authorization', `Bearer ${studentAccessToken}`)
-      .set('Idempotency-Key', 'e2e-booking-1')
+      .set('Idempotency-Key', randomUUID())
       .send({
         courseId,
         startAt: slot1Start.toISOString(),
@@ -255,7 +257,7 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
     const booking2Res = await request
       .post('/v1/bookings')
       .set('Authorization', `Bearer ${studentAccessToken}`)
-      .set('Idempotency-Key', 'e2e-booking-2')
+      .set('Idempotency-Key', randomUUID())
       .send({
         courseId,
         startAt: slot2Start.toISOString(),
@@ -308,7 +310,7 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
     const res = await request
       .post(`/v1/bookings/${booking1Id}/cancellation`)
       .set('Authorization', `Bearer ${studentAccessToken}`)
-      .set('Idempotency-Key', 'e2e-cancel-1')
+      .set('Idempotency-Key', randomUUID())
       .send({
         reason: 'Test early cancel',
       })
@@ -359,7 +361,7 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
     const res = await request
       .post(`/v1/bookings/${booking2Id}/reschedule`)
       .set('Authorization', `Bearer ${teacherAccessToken}`)
-      .set('Idempotency-Key', 'e2e-reschedule-1')
+      .set('Idempotency-Key', randomUUID())
       .send({
         newStartAt: newStart.toISOString(),
       })
@@ -413,7 +415,7 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
     const res = await request
       .post(`/v1/bookings/${booking2Id}/completion`)
       .set('Authorization', `Bearer ${teacherAccessToken}`)
-      .set('Idempotency-Key', 'e2e-complete-1')
+      .set('Idempotency-Key', randomUUID())
       .send({})
       .expect(200)
 
