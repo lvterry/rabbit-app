@@ -101,4 +101,5 @@ public enum ErrorCode {
     public static let validationFailed = "VALIDATION_FAILED"
     public static let clientTooOld = "CLIENT_TOO_OLD"
     public static let internalError = "INTERNAL"
+    public static let notImplemented = "NOT_IMPLEMENTED"
 }

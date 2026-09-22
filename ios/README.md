@@ -71,6 +71,48 @@ Set environment variables in Xcode scheme (Edit Scheme → Run → Arguments →
 - `API_BASE_URL` - API server URL (default: `http://localhost:8787`)
 - `DEMO_MODE` - Enable demo tools (set to `true` for development)
 
+#### Local API Testing & Stabilization E2E
+
+For **real API integration** (Wave 1 Stabilization E2E or local development against backend):
+
+1. **Start Local Backend Stack:**
+   ```bash
+   # From repository root
+   docker-compose up -d postgres
+   pnpm dev  # Starts API on http://localhost:8787
+   ```
+
+2. **Configure Xcode Scheme:**
+   - Menu: **Product → Scheme → Edit Scheme…** (`⌘<`)
+   - Select **Run** → **Arguments** tab
+   - Add environment variable:
+     - `API_BASE_URL` = `http://localhost:8787`
+   - **Note:** iOS Simulator's `localhost` automatically maps to host Mac's `localhost`
+
+3. **Dev Teacher Authentication (DEBUG builds only):**
+   - ⚠️ DEBUG builds include a **"Dev: Sign in as seeded teacher"** button on the Onboarding screen
+   - This calls `POST /v1/auth/dev/teacher` with empty body `{}`
+   - Requires `NODE_ENV=development|test` on API server
+   - Response includes `{ accessToken, refreshToken, expiresIn, user, teacher }` in one payload
+   - SessionStore populated in one shot — no separate `/me` call required
+   - Returns real User + Teacher JWTs with real Principal
+   - **Maya must implement backend endpoint first** (Wave 1 Stabilization work)
+   - Release builds never show this button (`#if DEBUG` gated)
+   - **No DEMO_MODE login bypass** — this uses real auth flow via SessionStore
+   - Clear error message if endpoint returns 404/501 (not in development mode)
+
+4. **Production Authentication:**
+   - ⚠️ **Sign in with Apple** (`POST /v1/auth/apple`) is not yet implemented (returns 501)
+   - Production auth path TBD; pilot/staging will require Apple Sign In implementation
+
+5. **Verify API Connectivity:**
+   ```bash
+   curl http://localhost:8787/v1/meta
+   # Should return: {"status":"ok",...}
+   ```
+
+**Important:** Mock/Preview-only testing does NOT satisfy the E2E exit gate. Real API integration with authenticated Principal is required for Wave 1 Stabilization validation. See `ios/docs/wave1-stabilization-e2e-checklist.md` for full walkthrough details.
+
 ### 3. Build & Run
 
 Select iPhone 15 simulator and run (⌘R).

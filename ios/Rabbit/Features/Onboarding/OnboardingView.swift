@@ -3,6 +3,8 @@ import RabbitKit
 
 struct OnboardingView: View {
     @EnvironmentObject var sessionStore: SessionStore
+    @State private var isAuthenticating = false
+    @State private var authError: String?
     
     var body: some View {
         VStack(spacing: 32) {
@@ -44,6 +46,33 @@ struct OnboardingView: View {
                     .cornerRadius(12)
                 }
                 
+                #if DEBUG
+                // Dev teacher auth (DEBUG only, never in Release)
+                Button {
+                    Task {
+                        await authenticateDevTeacher()
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "wrench.and.screwdriver")
+                        Text("Dev: Sign in as seeded teacher")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.orange.opacity(0.8))
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+                .disabled(isAuthenticating)
+                
+                if let error = authError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                }
+                #endif
+                
                 Text("登录即表示您同意我们的服务条款和隐私政策")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -53,6 +82,22 @@ struct OnboardingView: View {
             .padding(.bottom, 32)
         }
     }
+    
+    #if DEBUG
+    private func authenticateDevTeacher() async {
+        isAuthenticating = true
+        authError = nil
+        
+        do {
+            try await sessionStore.authenticateDevTeacher()
+            // Session is now authenticated; MainTabView will appear
+        } catch {
+            authError = "Dev auth failed: \(error.localizedDescription)"
+        }
+        
+        isAuthenticating = false
+    }
+    #endif
 }
 
 #Preview {

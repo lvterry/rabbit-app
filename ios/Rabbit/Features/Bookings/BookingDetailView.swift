@@ -190,8 +190,19 @@ struct BookingDetailView: View {
                             // Reschedule - show ONLY if booking.actions.canReschedule
                             if booking.actions.canReschedule {
                                 Button {
-                                    // TODO: Reschedule flow - needs date/time picker + POST /bookings/:id/reschedule
-                                    // Server will validate reschedule limits and policies
+                                    // Minimal reschedule for Stabilization E2E: bump start by +30 minutes.
+                                    // Full date/time picker can replace this later; server still validates.
+                                    Task {
+                                        let fractional = ISO8601DateFormatter()
+                                        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                                        let plain = ISO8601DateFormatter()
+                                        plain.formatOptions = [.withInternetDateTime]
+                                        guard let start = fractional.date(from: booking.startAt) ?? plain.date(from: booking.startAt) else {
+                                            return
+                                        }
+                                        let newStart = fractional.string(from: start.addingTimeInterval(1800))
+                                        await viewModel.reschedule(newStartAt: newStart)
+                                    }
                                 } label: {
                                     Label("改期", systemImage: "arrow.right.circle")
                                 }

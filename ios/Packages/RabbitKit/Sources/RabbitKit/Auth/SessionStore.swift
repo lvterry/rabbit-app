@@ -57,6 +57,95 @@ public final class SessionStore: ObservableObject {
         }
     }
     
+    // MARK: - Dev Teacher Auth (DEBUG only)
+    
+    #if DEBUG
+    /// Development-only teacher authentication for E2E testing
+    /// Calls POST /v1/auth/dev/teacher (NODE_ENV=development|test only)
+    /// Returns real User access+refresh JWTs with real Principal + user/teacher data
+    public func authenticateDevTeacher() async throws {
+        // Get base URL from environment
+        let baseURLString = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:8787"
+        guard let baseURL = URL(string: baseURLString) else {
+            throw RabbitAPIError.invalidResponse
+        }
+        
+        // Call POST /v1/auth/dev/teacher
+        let devAuthURL = baseURL.appendingPathComponent("v1/auth/dev/teacher")
+        var request = URLRequest(url: devAuthURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Empty body per Maya's contract
+        let emptyBody = "{}".data(using: .utf8)!
+        request.httpBody = emptyBody
+        
+        // Execute request
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw RabbitAPIError.invalidResponse
+        }
+        
+        // Handle endpoint not available (404/501) with clear error
+        if httpResponse.statusCode == 404 || httpResponse.statusCode == 501 {
+            throw RabbitAPIError.serverError(
+                code: ErrorCode.notImplemented,
+                message: "Dev teacher auth endpoint not available. Ensure API is running in development mode (NODE_ENV=development).",
+                retryable: false,
+                details: nil
+            )
+        }
+        
+        if httpResponse.statusCode >= 400 {
+            throw RabbitAPIError.serverError(
+                code: ErrorCode.unauthenticated,
+                message: "Dev teacher auth failed with status \(httpResponse.statusCode)",
+                retryable: false,
+                details: nil
+            )
+        }
+        
+        // Decode response per Maya's contract:
+        // data: { accessToken, refreshToken, expiresIn, user, teacher, isTeacher, students }
+        // Note: students field present but not required for teacher gate
+        struct DevAuthResponse: Decodable {
+            let accessToken: String
+            let refreshToken: String
+            let expiresIn: Int
+            let user: User
+            let teacher: Teacher?
+            let isTeacher: Bool
+            // students field may be present but not decoded (not needed for teacher gate)
+        }
+        
+        let decoder = JSONDecoder()
+        let envelope = try decoder.decode(APIResponse<DevAuthResponse>.self, from: data)
+        let authResponse = envelope.data
+        
+        // Auth gate: only authenticate if user is a teacher with valid profile
+        // Same fail-closed logic as refreshAccessToken /me restore
+        guard authResponse.isTeacher, let teacher = authResponse.teacher else {
+            // Not a teacher or teacher profile missing - fail closed
+            clearSession()
+            throw RabbitAPIError.serverError(
+                code: ErrorCode.forbidden,
+                message: "User is not a teacher",
+                retryable: false,
+                details: nil
+            )
+        }
+        
+        // Set session in one shot (no separate GET /v1/me required)
+        setSession(
+            accessToken: authResponse.accessToken,
+            refreshToken: authResponse.refreshToken,
+            user: authResponse.user,
+            teacher: teacher
+        )
+    }
+    #endif
+    
     // MARK: - Token Refresh
     
     public func refreshAccessToken() async throws {

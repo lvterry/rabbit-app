@@ -51,7 +51,9 @@ public actor BookingRepository: BookingRepositoryProtocol {
     }
     
     public func booking(id: String) async throws -> Booking {
-        return try await client.get(.booking(id))
+        struct BookingEnvelope: Decodable { let booking: Booking }
+        let envelope: BookingEnvelope = try await client.get(.booking(id))
+        return envelope.booking
     }
     
     public func createBooking(studentId: String, courseId: String, startAt: String) async throws -> Booking {
@@ -68,7 +70,9 @@ public actor BookingRepository: BookingRepositoryProtocol {
         )
         
         let idempotencyKey = UUID().uuidString
-        return try await client.post(.bookings, body: request, idempotencyKey: idempotencyKey)
+        struct BookingEnvelope: Decodable { let booking: Booking }
+        let envelope: BookingEnvelope = try await client.post(.bookings, body: request, idempotencyKey: idempotencyKey)
+        return envelope.booking
     }
     
     public func completeBooking(id: String) async throws -> Booking {
