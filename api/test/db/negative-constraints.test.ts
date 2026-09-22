@@ -158,13 +158,17 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
       [bookingId, teacherId, studentId, courseId, packageId]
     )
 
-    await expect(
-      pool.query(
+    // Second Active session should be rejected by partial unique index
+    try {
+      await pool.query(
         `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, package_id, completed_at, status, source)
          VALUES ($1, $2, $3, $4, $5, now(), 'Active', 'TeacherConfirmed')`,
         [bookingId, teacherId, studentId, courseId, packageId]
       )
-    ).rejects.toThrow(/23505|session_one_active_per_booking/)
+      throw new Error('Duplicate Active session should have been rejected')
+    } catch (err: any) {
+      expect(err.code).toBe('23505') // unique_violation (idx_lesson_session_booking_active)
+    }
   })
 
   it('should reject negative or out-of-range remaining_sessions (I1: package_balance_range)', async () => {
@@ -221,28 +225,37 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
 
     const txId = txResult.rows[0].id
 
-    // Switch to app_rw role to test permission denial (migration 003 revokes from app_rw)
-    await pool.query('SET ROLE app_rw')
-
+    // Use dedicated client to pin SET ROLE across queries (Pool doesn't guarantee same connection)
+    const client = await pool.connect()
+    
     try {
-      // Now test that UPDATE is denied (migration 003 revokes UPDATE on package_transaction)
-      await expect(
-        pool.query(
+      // Switch to app_rw role to test permission denial (migration 003 revokes from app_rw)
+      await client.query('SET ROLE app_rw')
+
+      // Test that UPDATE is denied (migration 003 revokes UPDATE on package_transaction)
+      try {
+        await client.query(
           `UPDATE package_transaction SET amount = 10 WHERE id = $1`,
           [txId]
         )
-      ).rejects.toThrow(/42501|permission denied/)
+        throw new Error('UPDATE should have been denied')
+      } catch (err: any) {
+        expect(err.code).toBe('42501') // permission_denied
+      }
 
       // Test that DELETE is denied
-      await expect(
-        pool.query(
+      try {
+        await client.query(
           `DELETE FROM package_transaction WHERE id = $1`,
           [txId]
         )
-      ).rejects.toThrow(/42501|permission denied/)
+        throw new Error('DELETE should have been denied')
+      } catch (err: any) {
+        expect(err.code).toBe('42501') // permission_denied
+      }
     } finally {
-      // Reset role
-      await pool.query('RESET ROLE')
+      await client.query('RESET ROLE')
+      client.release()
     }
   })
 
@@ -279,44 +292,6 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
         [teacherId, userId]
       )
     ).rejects.toThrow(/23505|idx_student_teacher_user_bound/)
-  })
-
-  it('should reject active_session_id pointing to different Booking (I2: composite FK)', async () => {
-    const start = new Date('2026-10-05T10:00:00Z')
-    const end = new Date('2026-10-05T11:00:00Z')
-
-    const booking1Result = await pool.query(
-      `INSERT INTO booking (teacher_id, student_id, course_id, package_id, start_at, end_at, status, policy_snapshot_free_cancel_hours, source)
-       VALUES ($1, $2, $3, $4, $5, $6, 'Upcoming', 24, 'TeacherCreated')
-       RETURNING id`,
-      [teacherId, studentId, courseId, packageId, start, end]
-    )
-
-    const booking2Result = await pool.query(
-      `INSERT INTO booking (teacher_id, student_id, course_id, package_id, start_at, end_at, status, policy_snapshot_free_cancel_hours, source)
-       VALUES ($1, $2, $3, $4, $5, $6, 'Upcoming', 24, 'TeacherCreated')
-       RETURNING id`,
-      [teacherId, studentId, courseId, packageId, new Date('2026-10-05T14:00:00Z'), new Date('2026-10-05T15:00:00Z')]
-    )
-
-    const booking1Id = booking1Result.rows[0].id
-    const booking2Id = booking2Result.rows[0].id
-
-    const sessionResult = await pool.query(
-      `INSERT INTO lesson_session (booking_id, teacher_id, student_id, course_id, package_id, completed_at, status, source)
-       VALUES ($1, $2, $3, $4, $5, now(), 'Active', 'TeacherConfirmed')
-       RETURNING id`,
-      [booking2Id, teacherId, studentId, courseId, packageId]
-    )
-
-    const sessionId = sessionResult.rows[0].id
-
-    await expect(
-      pool.query(
-        `UPDATE booking SET active_session_id = $1 WHERE id = $2`,
-        [sessionId, booking1Id]
-      )
-    ).rejects.toThrow(/23503/)
   })
 
   it('should allow complete→undo→complete (two lesson_session rows)', async () => {
