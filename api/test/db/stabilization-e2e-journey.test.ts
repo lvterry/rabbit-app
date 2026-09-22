@@ -430,7 +430,7 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
       .expect(200)
 
     expect(res.body.ok).toBe(true)
-    expect(res.body.data.booking.status).toBe('Completed')
+    expect(res.body.data.status).toBe('Completed')
 
     // Verify booking is Completed
     const bookingCheck = await pool.query(
@@ -529,7 +529,7 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
       .expect(200)
 
     expect(res.body.ok).toBe(true)
-    expect(res.body.data.booking.status).toBe('Completed')
+    expect(res.body.data.status).toBe('Completed')
 
     // Verify booking is Completed
     const bookingCheck = await pool.query(
@@ -574,7 +574,7 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
       .expect(200)
 
     expect(res.body.ok).toBe(true)
-    expect(res.body.data.booking.status).toBe('Completed')
+    expect(res.body.data.status).toBe('Completed')
 
     // Verify remaining_sessions is STILL 4 (not decremented again)
     const packageCheck = await pool.query(
