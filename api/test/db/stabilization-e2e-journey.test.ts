@@ -172,7 +172,7 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
     expect(res.body.data.studentId).toBe(studentId)
     expect(res.body.data.teacherId).toBe(teacherId)
     expect(res.body.data.accessToken).toBeDefined()
-    expect(res.body.data.refreshToken).toBeDefined()
+    // Note: refreshToken is NOT in response body (HttpOnly cookie only per docs)
 
     // Save student access token for subsequent requests
     studentAccessToken = res.body.data.accessToken
