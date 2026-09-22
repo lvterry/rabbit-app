@@ -616,9 +616,18 @@ export class BookingRepositoryImpl implements BookingRepository {
         throw new Error('BOOKING_NOT_UPCOMING')
       }
 
-      // Determine who is canceling
-      const isTeacher = principal.kind === 'User' // TODO: Check actual teacher capability
-      const cancelledBy = isTeacher ? 'Teacher' : 'Student'
+      // Determine who is canceling (auth-model.md: teacher is capability, not identity)
+      let cancelledBy: 'Teacher' | 'Student' = 'Student'
+      
+      if (principal.kind === 'User') {
+        // Check actual teacher capability via teacher_profile lookup
+        const { rows: [teacherProfile] } = await client.query(
+          `SELECT id FROM teacher_profile 
+           WHERE user_id = $1 AND status = 'Active'`,
+          [principal.userId]
+        )
+        cancelledBy = teacherProfile ? 'Teacher' : 'Student'
+      }
 
       // Determine policy
       const policy = determineCancellationPolicy({
@@ -702,9 +711,20 @@ export class BookingRepositoryImpl implements BookingRepository {
         throw new Error('RESCHEDULE_LIMIT_REACHED')
       }
 
-      // Determine policy for old booking
-      const isTeacher = principal.kind === 'User' // TODO: Check actual capability
-      const cancelledBy = isTeacher ? 'Teacher' : 'Student'
+      // Determine policy for old booking (auth-model.md: teacher is capability, not identity)
+      let cancelledBy: 'Teacher' | 'Student' = 'Student'
+      let isTeacher = false
+      
+      if (principal.kind === 'User') {
+        // Check actual teacher capability via teacher_profile lookup
+        const { rows: [teacherProfile] } = await client.query(
+          `SELECT id FROM teacher_profile 
+           WHERE user_id = $1 AND status = 'Active'`,
+          [principal.userId]
+        )
+        isTeacher = !!teacherProfile
+        cancelledBy = isTeacher ? 'Teacher' : 'Student'
+      }
 
       const policy = determineReschedulePolicy({
         startAt: new Date(oldBooking.start_at),

@@ -28,9 +28,9 @@ beforeAll(async () => {
 
   await pool.query('BEGIN')
 
-  // Setup test data
+  // Setup test data (matches migration 001 schema: nickname, not name/email)
   const userResult = await pool.query(
-    `INSERT INTO app_user (name, email, status) VALUES ('Teacher Test', 'teacher@test.com', 'Active') RETURNING id`
+    `INSERT INTO app_user (nickname) VALUES ('Teacher Test') RETURNING id`
   )
   const userId = userResult.rows[0].id
 

@@ -31,7 +31,7 @@ beforeAll(async () => {
   await pool.query('BEGIN')
 
   const userResult = await pool.query(
-    `INSERT INTO app_user (name, email, status) VALUES ('Teacher Test', 'teacher@test.com', 'Active') RETURNING id`
+    `INSERT INTO app_user (nickname) VALUES ('Teacher Test') RETURNING id`
   )
   const userId = userResult.rows[0].id
 
@@ -235,7 +235,7 @@ describe('Negative Constraint Tests (data-model.md §1.2)', () => {
 
   it('should reject duplicate user_id for same teacher (I6: student_teacher_user_key)', async () => {
     const userResult = await pool.query(
-      `INSERT INTO app_user (name, email, status) VALUES ('Bound User', 'bound@test.com', 'Active') RETURNING id`
+      `INSERT INTO app_user (nickname) VALUES ('Bound User') RETURNING id`
     )
     const userId = userResult.rows[0].id
 
