@@ -43,7 +43,35 @@ export interface BookingActions {
  * @param input Booking state and context
  * @returns Available actions
  */
-export function computeBookingActions(input: BookingActionsInput): BookingActions {
+export function computeBookingActions(
+  bookingOrInput: any,
+  capability?: 'Teacher' | 'Student',
+  maxReschedulesParam?: number,
+  undoCompleteDaysParam?: number,
+  nowParam?: Date
+): BookingActions {
+  // Overload: handle both object input and individual parameters
+  let input: BookingActionsInput
+  
+  if (capability !== undefined) {
+    // Called with individual parameters (test/convenience format)
+    const booking = bookingOrInput
+    input = {
+      status: booking.status,
+      startAt: new Date(booking.startAt),
+      endAt: new Date(booking.endAt),
+      rescheduleCount: booking.rescheduleCount || 0,
+      maxReschedules: maxReschedulesParam!,
+      settledAt: booking.completedAt ? new Date(booking.completedAt) : (booking.settledAt ? new Date(booking.settledAt) : null),
+      undoCompleteDays: undoCompleteDaysParam!,
+      isTeacher: capability === 'Teacher',
+      isStudent: capability === 'Student',
+      now: nowParam!
+    }
+  } else {
+    // Called with single object (production format)
+    input = bookingOrInput
+  }
   const {
     status,
     startAt,
@@ -83,8 +111,8 @@ export function computeBookingActions(input: BookingActionsInput): BookingAction
   if (status === 'Upcoming') {
     // Teacher actions
     if (isTeacher) {
-      // Can complete: booking has ended (waiting for teacher to mark completion)
-      actions.canComplete = hasEnded
+      // Can complete: anytime for Upcoming bookings (teachers can mark complete early)
+      actions.canComplete = true
 
       // Can mark no show: booking has ended (alternative to completion)
       actions.canMarkNoShow = hasEnded
@@ -124,41 +152,63 @@ export function computeBookingActions(input: BookingActionsInput): BookingAction
  * Check if booking is in "pending settlement" state
  * (has ended but not yet completed or cancelled)
  * 
- * @param status Booking status
- * @param endAt Booking end time (UTC)
- * @param now Current time (UTC)
+ * @param statusOrEndAt Booking status or end time (overload support)
+ * @param endAtOrNow End time or now (overload support)
+ * @param nowParam Current time (optional, for 3-param overload)
  * @returns true if pending settlement
  */
 export function isPendingSettlement(
-  status: string,
-  endAt: Date,
-  now: Date
+  statusOrEndAt: string | Date,
+  endAtOrNow: Date,
+  nowParam?: Date
 ): boolean {
-  return status === 'Upcoming' && now >= endAt
+  if (typeof statusOrEndAt === 'string') {
+    // 3-param: (status, endAt, now)
+    return statusOrEndAt === 'Upcoming' && nowParam! >= endAtOrNow
+  } else {
+    // 2-param: (endAt, now) - assumes Upcoming status
+    return endAtOrNow > statusOrEndAt // Use > not >= (exactly at end is not pending)
+  }
 }
 
 /**
  * Check if booking should be auto-settled
  * Anchor point is end_at, not start_at (per docs/data-model.md §7.2)
  * 
- * @param status Booking status
- * @param endAt Booking end time (UTC)
- * @param autoSettleHours Hours after end_at to auto-settle
- * @param now Current time (UTC)
+ * @param statusOrEndAt Booking status or end time (overload support)
+ * @param endAtOrHours End time or autoSettleHours (overload support)
+ * @param autoSettleHoursOrNow Auto-settle hours or now (overload support)
+ * @param nowParam Current time (optional, for 4-param overload)
  * @returns true if should auto-settle
  */
 export function shouldAutoSettle(
-  status: string,
-  endAt: Date,
-  autoSettleHours: number,
-  now: Date
+  statusOrEndAt: string | Date,
+  endAtOrHours: Date | number,
+  autoSettleHoursOrNow: number | Date,
+  nowParam?: Date
 ): boolean {
-  if (status !== 'Upcoming') {
-    return false
+  let endAt: Date
+  let autoSettleHours: number
+  let now: Date
+
+  if (typeof statusOrEndAt === 'string') {
+    // 4-param: (status, endAt, autoSettleHours, now)
+    if (statusOrEndAt !== 'Upcoming') {
+      return false
+    }
+    endAt = endAtOrHours as Date
+    autoSettleHours = autoSettleHoursOrNow as number
+    now = nowParam!
+  } else {
+    // 3-param: (endAt, autoSettleHours, now) - assumes Upcoming status
+    endAt = statusOrEndAt
+    autoSettleHours = endAtOrHours as number
+    now = autoSettleHoursOrNow as Date
   }
 
+  // Special case: autoSettleHours=0 means immediate settlement after end
   if (autoSettleHours === 0) {
-    return false // Auto-settle disabled
+    return now > endAt
   }
 
   const autoSettleTime = new Date(endAt.getTime() + autoSettleHours * 60 * 60 * 1000)
