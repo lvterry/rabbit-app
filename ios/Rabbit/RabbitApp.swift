@@ -4,7 +4,7 @@ import RabbitKit
 @main
 struct RabbitApp: App {
     @State private var environment = AppEnvironment()
-    @State private var sessionStore = SessionStore.shared
+    @ObservedObject private var sessionStore = SessionStore.shared
     
     var body: some Scene {
         WindowGroup {

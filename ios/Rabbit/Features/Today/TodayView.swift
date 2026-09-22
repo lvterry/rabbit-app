@@ -28,14 +28,7 @@ struct TodayView: View {
                             
                             // Next booking card
                             if let next = day.next {
-                                NavigationLink {
-                                    BookingDetailView(
-                                        viewModel: BookingDetailViewModel(
-                                            bookingId: next.bookingId,
-                                            repo: environment.bookingRepository
-                                        )
-                                    )
-                                } label: {
+                                NavigationLink(value: next.bookingId) {
                                     NextBookingCard(booking: next)
                                 }
                                 .buttonStyle(.plain)
@@ -50,14 +43,7 @@ struct TodayView: View {
                                         .padding(.horizontal)
                                     
                                     ForEach(day.pending) { booking in
-                                        NavigationLink {
-                                            BookingDetailView(
-                                                viewModel: BookingDetailViewModel(
-                                                    bookingId: booking.bookingId,
-                                                    repo: environment.bookingRepository
-                                                )
-                                            )
-                                        } label: {
+                                        NavigationLink(value: booking.bookingId) {
                                             BookingRow(booking: booking, showDate: false)
                                         }
                                         .buttonStyle(.plain)
@@ -74,14 +60,7 @@ struct TodayView: View {
                                         .padding(.horizontal)
                                     
                                     ForEach(day.bookings) { booking in
-                                        NavigationLink {
-                                            BookingDetailView(
-                                                viewModel: BookingDetailViewModel(
-                                                    bookingId: booking.bookingId,
-                                                    repo: environment.bookingRepository
-                                                )
-                                            )
-                                        } label: {
+                                        NavigationLink(value: booking.bookingId) {
                                             BookingRow(booking: booking, showDate: false)
                                         }
                                         .buttonStyle(.plain)
@@ -140,6 +119,14 @@ struct TodayView: View {
                 }
             }
             .navigationTitle("今天")
+            .navigationDestination(for: String.self) { bookingId in
+                BookingDetailView(
+                    viewModel: BookingDetailViewModel(
+                        bookingId: bookingId,
+                        repo: environment.bookingRepository
+                    )
+                )
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
