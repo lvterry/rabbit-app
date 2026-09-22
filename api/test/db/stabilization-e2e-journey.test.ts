@@ -479,7 +479,8 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
       .expect(200)
 
     expect(res.body.ok).toBe(true)
-    expect(res.body.data.booking.status).toBe('Upcoming')
+    // Flat response shape
+    expect(res.body.data.status).toBe('Upcoming')
 
     // Verify booking is back to Upcoming
     const bookingCheck = await pool.query(

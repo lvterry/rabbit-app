@@ -712,7 +712,7 @@ export class BookingRepositoryImpl implements BookingRepository {
          JOIN teacher_profile tp ON tp.id = b.teacher_id
          LEFT JOIN lesson_session ls ON ls.booking_id = b.id AND ls.status = 'Active'
          WHERE b.id = $1
-         FOR UPDATE`,
+         FOR UPDATE OF b, tp`,
         [bookingId]
       )
 
