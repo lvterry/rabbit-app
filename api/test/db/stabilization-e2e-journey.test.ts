@@ -152,12 +152,16 @@ async function seedTestData() {
   inviteToken = inviteResult.rows[0].token
 
   // 7. Generate teacher access token for teacher-initiated operations
-  // Use dev auth endpoint to get real tokens
+  // Use dev auth endpoint with seeded teacherId to ensure correct ownership
   const teacherAuthRes = await request
     .post('/v1/auth/dev/teacher')
-    .send({})
+    .send({ teacherId })
     .expect(200)
 
+  // Assert teacher auth response matches seeded teacher
+  expect(teacherAuthRes.body.data.teacher.teacherId).toBe(teacherId)
+  expect(teacherAuthRes.body.data.user.userId).toBe(userId)
+  
   teacherAccessToken = teacherAuthRes.body.data.accessToken
 }
 
@@ -319,8 +323,9 @@ describe('Stabilization E2E Journey (Real Postgres + HTTP)', () => {
       .expect(200)
 
     expect(res.body.ok).toBe(true)
-    expect(res.body.data.booking.status).toBe('Cancelled')
-    expect(res.body.data.policy).toBe('FREE_CANCEL')
+    // Flat response shape per contracts/fixtures/bookings/cancelled-free.json
+    expect(res.body.data.status).toBe('Cancelled')
+    expect(res.body.data.cancellationPolicyResult).toBe('FREE_CANCEL')
     expect(res.body.data.consumedSession).toBe(false)
 
     // Verify booking is Cancelled
